@@ -322,7 +322,7 @@ class UI {
         const pitchHtml = this.generatePitchHtml(players);
 
         return `
-                <div class="mb-4" style = "display:flex; justify-content:flex-end;" >
+                <div class="mb-4" style = "display:flex; justify-content:flex-end;">
                     <div class="gap-4" style="display:flex; align-items:center; flex-wrap:wrap;">
                         <div style="display:flex; align-items:center; gap:0.5rem;" title="Períodos a jugar">
                             <span class="text-sm text-muted">Períodos:</span>
@@ -470,7 +470,7 @@ class UI {
         const renderPitchLine = (names, color) => {
             if (!names || names.length === 0) return '';
             return names.map(n => `
-                <div style = "display:flex; flex-direction:column; align-items:center;" >
+                <div style = "display:flex; flex-direction:column; align-items:center;">
                     <div class="dot bg-${color}" style="width:12px; height:12px; border-radius:50%; margin-bottom:2px; box-shadow:0 0 0 1px white;"></div>
                     <span style="color:white; font-size:10px; text-shadow:1px 1px 2px black; font-weight:bold; max-width:60px; text-align:center; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</span>
                 </div>
@@ -479,9 +479,9 @@ class UI {
 
         const renderSubsZone = (names, title, colorClass) => {
             if (!names || names.length === 0) return '';
-            const namesHtml = names.map(n => `<div style = "font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" class="text-${colorClass}" > ${ n }</div> `).join('');
+            const namesHtml = names.map(n => `<div style = "font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" class="text-${colorClass}"> ${ n }</div> `).join('');
             return `
-                <div style = "margin-bottom: 8px;" >
+                <div style = "margin-bottom: 8px;">
                     <div style="font-size:10px; font-weight:bold; color:var(--text-muted); border-bottom:1px solid var(--border-color); padding-bottom:2px; margin-bottom:4px;">${title}</div>
                     ${ namesHtml }
                 </div>
@@ -489,8 +489,8 @@ class UI {
         };
 
         return `
-                <div style = "display:flex; gap: 1rem; align-items:flex-start;" >
-                < !--Pitch -->
+                <div style = "display:flex; gap: 1rem; align-items:flex-start;">
+                <!--Pitch-->
                 <div class="mini-pitch" style="flex:1; background:#2e7d32; border: 2px solid white; border-radius: 4px; height: 350px; position: relative; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; margin-top:1rem; overflow:hidden;">
                     <!--23m lines-->
                     <div style="border-top: 1px solid rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.4); position: absolute; top:25%; bottom:25%; left:0; right:0; z-index:0;"></div>
@@ -560,23 +560,23 @@ class UI {
 
         if (startersCount !== reqOnField) {
             hasBlockingConflict = true;
-            conflictsHtml += `<div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);" > <i class="fa-solid fa-ban"></i> Acción Requerida: Debes elegir exactamente <b> ${ reqOnField } Titulares</b> en total.Tienes ${ startersCount } seleccionadas.</div> `;
+            conflictsHtml += `<div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);"> <i class="fa-solid fa-ban"></i> Acción Requerida: Debes elegir exactamente <b> ${ reqOnField } Titulares</b> en total.Tienes ${ startersCount } seleccionadas.</div> `;
         }
 
         if (gkStartersCount !== 1) {
             hasBlockingConflict = true;
-            conflictsHtml += `<div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);" > <i class="fa-solid fa-ban"></i> Acción Requerida: Tienes ${ gkStartersCount } Arqueras titulares.Debe haber <b> exactamente 1</b>.</div> `;
+            conflictsHtml += `<div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);"> <i class="fa-solid fa-ban"></i> Acción Requerida: Tienes ${ gkStartersCount } Arqueras titulares.Debe haber <b> exactamente 1</b>.</div> `;
         }
 
         if (Math.abs(diff) > 2) {
             const isOver = diff > 0;
-            conflictsHtml += `<div class="text-${isOver ? 'warning' : 'danger'} mb-2" >
+            conflictsHtml += `<div class="text-${isOver ? 'warning' : 'danger'} mb-2">
                 <i class="fa-solid fa-scale-unbalanced"></i> Tiempos desbalanceados: Las barras suman <b> ${ Math.round(totalTargetMinutes) } min</b> en el partido, pero en cancha hay lugar para <b> ${ targetNeeded } min</b> (${ reqOnField } jugadoras x ${ totalMatchMinutes }m).${ isOver ? 'Sobran minutos, algunas jugarán menos de lo pedido.' : 'Faltan minutos, algunas jugarán más de lo pedido.' }
             </div> `;
         }
 
         if (!conflictsHtml) {
-            conflictsHtml = `<div class="text-success" > <i class="fa-solid fa-check-circle"></i> Todo se ve balanceado.Táctica ${ reqOnField } titulares elegida correctamente.</div> `;
+            conflictsHtml = `<div class="text-success"> <i class="fa-solid fa-check-circle"></i> Todo se ve balanceado.Táctica ${ reqOnField } titulares elegida correctamente.</div> `;
         }
 
         return { conflictsHtml, hasBlockingConflict };
@@ -603,14 +603,14 @@ class UI {
         if (!config) return '';
 
         let reqPosHtml = Object.entries(config.formationRequirements).map(([pos, count]) => `
-            <div style = "flex:1" >
+            <div style = "flex:1">
                 <label class="form-label">${pos}</label>
                 <input type="number" class="form-control req-pos-input" data-pos="${pos}" value="${count}" min="0">
             </div>
         `).join('');
 
         return `
-            <div class="flex-between mb-4" >
+            <div class="flex-between mb-4">
                 <h2>Configuración del Partido</h2>
                 <div>
                     <button class="btn btn-outline" onclick="window.SmartSubs.UI.navigate('players')" style="margin-right:0.5rem;">Volver</button>
@@ -686,7 +686,7 @@ class UI {
 
         if (!plan || !plan.blocks || plan.blocks.length === 0) {
             return `
-            <div class="flex-between mb-4" >
+            <div class="flex-between mb-4">
                 <h2>Plan de Rotación</h2>
             </div>
             <div class="card" style="text-align:center; padding: 3rem;">
@@ -730,7 +730,7 @@ class UI {
             // Table headers (15 down to 1)
             let headersHtml = '';
             for (let min = 1; min <= qLen; min++) {
-                headersHtml += `<th style = "width:30px; text-align:center; padding:0.25rem;" > ${ min }</th> `;
+                headersHtml += `<th style = "width:30px; text-align:center; padding:0.25rem;"> ${ min }</th> `;
             }
 
             let rowsHtml = '';
@@ -745,10 +745,10 @@ class UI {
 
                     if (isPlaying) {
                         currentStintMins++;
-                        cellsHtml += `<td class="bg-${posGroup.color} text-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;" > ${ currentStintMins }</td> `;
+                        cellsHtml += `<td class="bg-${posGroup.color} text-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;"> ${ currentStintMins }</td> `;
                     } else {
                         currentStintMins = -1;
-                        cellsHtml += `<td class="bg-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;" ></td> `;
+                        cellsHtml += `<td class="bg-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;"></td> `;
                     }
                 });
 
@@ -762,7 +762,7 @@ class UI {
             });
 
             tablesHtml += `
-            <div class="mb-6" >
+            <div class="mb-6">
                     <h4 style="margin-bottom:0.25rem; text-transform:uppercase; font-size: 14px;">${posGroup.name}</h4>
                     <div style="overflow-x:auto;">
                         <table style="width:100%; border-collapse: collapse; background:white; color:black; font-family:monospace;">
@@ -791,7 +791,7 @@ class UI {
         for (let qNum = 1; qNum <= numPeriods; qNum++) {
             const startStr = (qNum - 1) * qLen + 1;
             const endStr = qNum * qLen;
-            quarterBtnsHtml += `<button class="${btnClass(qNum)}" onclick = "window.SmartSubs.UI.currentQuarter=${qNum}; window.SmartSubs.UI.render();" > P${ qNum } (Min ${ startStr } - ${ endStr })</button> `;
+            quarterBtnsHtml += `<button class="${btnClass(qNum)}" onclick = "window.SmartSubs.UI.currentQuarter=${qNum}; window.SmartSubs.UI.render();"> P${ qNum } (Min ${ startStr } - ${ endStr })</button> `;
         }
 
         return `
@@ -830,17 +830,17 @@ class UI {
         const renderPlayerRow = (p, isField) => {
             const isLocked = block.lockedPlayerIds.includes(p.id);
             const actionBtn = isField
-                ? `<button class="btn btn-sm btn-outline btn-icon" title = "Mandar al banco" onclick = "window.SmartSubs.UI.swapPlayer('${p.id}', false)" > <i class="fa-solid fa-arrow-down text-danger"></i></button> `
-                : `<button class="btn btn-sm btn-outline btn-icon" title = "Meter a la cancha" onclick = "window.SmartSubs.UI.swapPlayer('${p.id}', true)" > <i class="fa-solid fa-arrow-up text-success"></i></button> `;
+                ? `<button class="btn btn-sm btn-outline btn-icon" title = "Mandar al banco" onclick = "window.SmartSubs.UI.swapPlayer('${p.id}', false)"> <i class="fa-solid fa-arrow-down text-danger"></i></button> `
+                : `<button class="btn btn-sm btn-outline btn-icon" title = "Meter a la cancha" onclick = "window.SmartSubs.UI.swapPlayer('${p.id}', true)"> <i class="fa-solid fa-arrow-up text-success"></i></button> `;
 
             const lockBtn = isField
-                ? `<button class="btn btn-sm btn-icon ${isLocked ? 'btn-primary' : 'btn-outline'}" title = "${isLocked ? 'Desbloquear' : 'Bloquear'}" onclick = "window.SmartSubs.UI.toggleLockPlayer('${p.id}')" >
+                ? `<button class="btn btn-sm btn-icon ${isLocked ? 'btn-primary' : 'btn-outline'}" title = "${isLocked ? 'Desbloquear' : 'Bloquear'}" onclick = "window.SmartSubs.UI.toggleLockPlayer('${p.id}')">
             <i class="fa-solid ${isLocked ? 'fa-lock' : 'fa-lock-open'}"></i>
                    </button> `
                 : '';
 
             return `
-            <div style = "display:flex; justify-content:space-between; align-items:center; padding:0.5rem; border:1px solid var(--border-color); border-radius:4px; margin-bottom:4px; background:var(--bg-dark);" >
+            <div style = "display:flex; justify-content:space-between; align-items:center; padding:0.5rem; border:1px solid var(--border-color); border-radius:4px; margin-bottom:4px; background:var(--bg-dark);">
                     <span><span class="badge badge-gray text-xs" style="margin-right:8px;">${p.positionTag}</span> <b>${p.number} ${p.name}</b></span>
                     <div style="display:flex; gap:0.5rem;">
                         ${lockBtn}
@@ -851,7 +851,7 @@ class UI {
         };
 
         return `
-            <div style = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:100; display:flex; align-items:center; justify-content:center; padding:2rem;" >
+            <div style = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:100; display:flex; align-items:center; justify-content:center; padding:2rem;">
                 <div class="card" style="width:100%; max-width:800px; max-height:80vh; overflow-y:auto; position:relative;">
                     <button class="btn btn-icon" style="position:absolute; top:1rem; right:1rem;" onclick="window.SmartSubs.UI.closeEditModal()">
                         <i class="fa-solid fa-xmark"></i>
@@ -994,7 +994,7 @@ class UI {
 
                 if (newCount > currentCount) {
                     window.SmartSubs.store.addPlayersByPosition(pos, newCount - currentCount);
-                } else if (newCount < currentCount) {
+                } else if (newCount <currentCount) {
                     window.SmartSubs.store.removePlayersByPosition(pos, currentCount - newCount);
                 }
                 this.render();
@@ -1011,7 +1011,7 @@ class UI {
 
                 // Assign starters
                 activePosPlayers.forEach((p, idx) => {
-                    const shouldStart = idx < count;
+                    const shouldStart = idx <count;
                     p.isStarter = shouldStart;
                     p.playTarget = shouldStart ? 3 : 1; // 75% titular, 25% suplente
                 });
@@ -1227,7 +1227,7 @@ class UI {
 
     recalcFromHere() {
         const match = window.SmartSubs.store.getCurrentMatch();
-        for (let i = 0; i < this.editingBlockIndex; i++) {
+        for (let i = 0; i <this.editingBlockIndex; i++) {
             match.plan.blocks[i].lockedPlayerIds = [...match.plan.blocks[i].onFieldPlayerIds];
         }
 
