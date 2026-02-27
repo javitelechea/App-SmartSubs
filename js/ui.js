@@ -231,7 +231,7 @@ class UI {
                 }
 
                 playerRows += `
-                <tr style="background: ${bgClass}; color: white; border-top: 4px solid var(--bg-surface); border-bottom: 2px solid var(--border-color);">
+                <tr class="pos-group-row" style="background: ${bgClass}; color: white; border-top: 4px solid var(--bg-surface); border-bottom: 2px solid var(--border-color);">
                     <td colspan="8" style="padding: 6px 12px; font-weight: bold; font-size: 11px; letter-spacing: 1px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <div style="display:flex; align-items:center; gap: 0.5rem;">
@@ -248,7 +248,7 @@ class UI {
             }
 
             playerRows += `
-            <tr data-id="${player.id}" class="player-row" style="${rowOpacity}">
+                    < tr data - id="${player.id}" class="player-row" style = "${rowOpacity}" >
                 <td style="width:40px; text-align:center;">
                     <input type="checkbox" class="p-active" ${isActive ? 'checked' : ''} style="cursor:pointer; width:1.2rem; height:1.2rem;">
                 </td>
@@ -311,8 +311,8 @@ class UI {
                         </label>
                     </div>`}
                 </td>
-            </tr>
-        `;
+            </tr >
+                    `;
         });
 
         // Calculate conflicts
@@ -322,25 +322,25 @@ class UI {
         const pitchHtml = this.generatePitchHtml(players);
 
         return `
-            <div class="mb-4" style="display:flex; justify-content:flex-end;">
-                <div class="gap-4" style="display:flex; align-items:center; flex-wrap:wrap;">
-                    <div style="display:flex; align-items:center; gap:0.5rem;" title="Períodos a jugar">
-                        <span class="text-sm text-muted">Períodos:</span>
-                        <input type="number" id="cfg-periods" class="form-control" value="${config.periodsCount || 4}" min="1" max="10" style="width:60px; text-align:center; padding:4px;">
-                    </div>
-                    <div style="display:flex; align-items:center; gap:0.5rem;" title="Minutos de reloj ininterrumpido por período">
-                        <span class="text-sm text-muted">Min/Per:</span>
-                        <input type="number" id="cfg-mins" class="form-control" value="${config.minsPerPeriod || 15}" min="5" max="45" style="width:60px; text-align:center; padding:4px;">
-                    </div>
-                    <button class="btn btn-warning" id="btn-reset-mins" title="Restablecer todos los jugadores al máximo/mínimo"><i class="fa-solid fa-rotate-left"></i> Restablecer Ajustes</button>
-                    <button class="btn btn-success" id="auto-gen-from-team" ${genBtnDisabled}><i class="fa-solid fa-wand-magic-sparkles"></i> Generar Plan de Partido</button>
-                </div>
-            </div>
+                    < div class="mb-4" style = "display:flex; justify-content:flex-end;" >
+                        <div class="gap-4" style="display:flex; align-items:center; flex-wrap:wrap;">
+                            <div style="display:flex; align-items:center; gap:0.5rem;" title="Períodos a jugar">
+                                <span class="text-sm text-muted">Períodos:</span>
+                                <input type="number" id="cfg-periods" class="form-control" value="${config.periodsCount || 4}" min="1" max="10" style="width:60px; text-align:center; padding:4px;">
+                            </div>
+                            <div style="display:flex; align-items:center; gap:0.5rem;" title="Minutos de reloj ininterrumpido por período">
+                                <span class="text-sm text-muted">Min/Per:</span>
+                                <input type="number" id="cfg-mins" class="form-control" value="${config.minsPerPeriod || 15}" min="5" max="45" style="width:60px; text-align:center; padding:4px;">
+                            </div>
+                            <button class="btn btn-warning" id="btn-reset-mins" title="Restablecer todos los jugadores al máximo/mínimo"><i class="fa-solid fa-rotate-left"></i> Restablecer Ajustes</button>
+                            <button class="btn btn-success" id="auto-gen-from-team" ${genBtnDisabled}><i class="fa-solid fa-wand-magic-sparkles"></i> Generar Plan de Partido</button>
+                        </div>
+            </div >
 
             <div class="players-grid-layout">
                 <div class="table-container-side">
                     <div class="card table-container mb-6" style="padding: 0;">
-                        <table class="table table-sm" style="margin:0; font-size:13px;">
+                        <table class="table table-sm" style="margin:0; font-size:13px; width: 100%;">
                             <thead style="position: sticky; top: 0; z-index: 10;">
                                 <tr>
                                     <th style="padding:4px;"><div style="font-size:10px; text-align:center;">JUEGA</div></th>
@@ -381,8 +381,63 @@ class UI {
                 .p-inline { background: transparent; border: 1px solid transparent; color: var(--text-main); transition: border 0.2s;}
                 .p-inline:focus, .p-inline:hover { border-color: var(--border-color); background: var(--bg-dark); }
                 .players-grid-layout { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
-                @media(max-width: 999px) {
+                @media(max-width: 900px) {
                     .pitch-side { display: none !important; }
+                    /* Responsive Table on Mobile */
+                    .table-container-side table, .table-container-side tbody { display: block; width: 100%; border:none; }
+                    .table-container-side thead { display: none; }
+                    .table-container-side .player-row {
+                        display: grid;
+                        grid-template-columns: 40px 50px 40px 1fr 80px;
+                        grid-template-areas: 
+                            "act str num name pos"
+                            "sld sld sld sld sld"
+                            "pca pca pca pcd pcd";
+                        gap: 8px;
+                        padding: 12px 8px !important;
+                        margin-bottom: 8px;
+                        border: 1px solid var(--border-color);
+                        border-radius: var(--radius-md);
+                        background: var(--bg-surface);
+                    }
+                    .table-container-side .player-row td {
+                        display: flex !important;
+                        align-items: center;
+                        width: 100% !important;
+                        padding: 0 !important;
+                        border: none !important;
+                    }
+                    .table-container-side .player-row td:nth-child(1) { grid-area: act; justify-content: center; }
+                    .table-container-side .player-row td:nth-child(2) { grid-area: str; justify-content: center; }
+                    .table-container-side .player-row td:nth-child(3) { grid-area: num; }
+                    .table-container-side .player-row td:nth-child(4) { grid-area: name; }
+                    .table-container-side .player-row td:nth-child(5) { grid-area: pos; }
+                    .table-container-side .player-row td:nth-child(6) { grid-area: sld; padding-top: 8px !important; }
+                    .table-container-side .player-row td:nth-child(7) { grid-area: pca; padding-top: 8px !important; justify-content: center; }
+                    .table-container-side .player-row td:nth-child(8) { grid-area: pcd; padding-top: 8px !important; justify-content: center; }
+                    
+                    /* Grouping Headers */
+                    .table-container-side tr.pos-group-row {
+                        display: block;
+                        margin-bottom: 8px;
+                        border-radius: var(--radius-md);
+                    }
+                    .table-container-side tr.pos-group-row td {
+                        display: block !important;
+                        width: 100% !important;
+                        padding: 12px 8px !important;
+                        border: none !important;
+                    }
+                    .table-container-side tr.pos-group-row td > div {
+                        flex-direction: column;
+                        align-items: flex-start !important;
+                        gap: 8px;
+                    }
+                    .table-container-side tr.pos-group-row td > div > div:first-child {
+                        width: 100%;
+                        justify-content: space-between !important;
+                    }
+                    .pos-total-mins { margin-top: 4px; display:block; }
                 }
                 @media(min-width: 1000px) {
                     .players-grid-layout { grid-template-columns: 3fr 1fr; }
@@ -391,7 +446,7 @@ class UI {
                 .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
                 .table-sm th, .table-sm td { padding: 4px 6px !important; }
             </style>
-        `;
+                `;
     }
 
     generatePitchHtml(players) {
@@ -402,11 +457,11 @@ class UI {
             if (p.isActive !== false) {
                 if (p.isStarter) {
                     if (matchStartersDetails[p.positionTag]) {
-                        matchStartersDetails[p.positionTag].push(p.name || `Jugador ${p.number}`);
+                        matchStartersDetails[p.positionTag].push(p.name || `Jugador ${p.number} `);
                     }
                 } else {
                     if (matchSubsDetails[p.positionTag]) {
-                        matchSubsDetails[p.positionTag].push(p.name || `Jugador ${p.number}`);
+                        matchSubsDetails[p.positionTag].push(p.name || `Jugador ${p.number} `);
                     }
                 }
             }
@@ -415,27 +470,27 @@ class UI {
         const renderPitchLine = (names, color) => {
             if (!names || names.length === 0) return '';
             return names.map(n => `
-            <div style="display:flex; flex-direction:column; align-items:center;">
+                    < div style = "display:flex; flex-direction:column; align-items:center;" >
                     <div class="dot bg-${color}" style="width:12px; height:12px; border-radius:50%; margin-bottom:2px; box-shadow:0 0 0 1px white;"></div>
                     <span style="color:white; font-size:10px; text-shadow:1px 1px 2px black; font-weight:bold; max-width:60px; text-align:center; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</span>
-                </div>
-            `).join('');
+                </div >
+                    `).join('');
         };
 
         const renderSubsZone = (names, title, colorClass) => {
             if (!names || names.length === 0) return '';
-            const namesHtml = names.map(n => `<div style="font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" class="text-${colorClass}">${n}</div>`).join('');
+            const namesHtml = names.map(n => `< div style = "font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" class="text-${colorClass}" > ${n}</div > `).join('');
             return `
-                <div style="margin-bottom: 8px;">
-                    <div style="font-size:10px; font-weight:bold; color:var(--text-muted); border-bottom:1px solid var(--border-color); padding-bottom:2px; margin-bottom:4px;">${title}</div>
+                    < div style = "margin-bottom: 8px;" >
+                        <div style="font-size:10px; font-weight:bold; color:var(--text-muted); border-bottom:1px solid var(--border-color); padding-bottom:2px; margin-bottom:4px;">${title}</div>
                     ${namesHtml}
-                </div>
-            `;
+                </div >
+                    `;
         };
 
         return `
-            <div style="display:flex; gap: 1rem; align-items:flex-start;">
-                <!-- Pitch -->
+                    < div style = "display:flex; gap: 1rem; align-items:flex-start;" >
+                < !--Pitch -->
                 <div class="mini-pitch" style="flex:1; background:#2e7d32; border: 2px solid white; border-radius: 4px; height: 350px; position: relative; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; margin-top:1rem; overflow:hidden;">
                     <!--23m lines-->
                     <div style="border-top: 1px solid rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.4); position: absolute; top:25%; bottom:25%; left:0; right:0; z-index:0;"></div>
@@ -459,16 +514,16 @@ class UI {
                     </div>
                 </div>
 
-                <!-- Substitutes Side Panel -->
-                <div style="width: 100px; margin-top:1rem; padding-left:0.5rem; border-left:1px dashed var(--border-color);">
-                    <div style="font-size:12px; font-weight:bold; margin-bottom:8px;">Suplentes</div>
-                    ${renderSubsZone(matchSubsDetails.FWD, 'DEL', 'danger')}
-                    ${renderSubsZone(matchSubsDetails.MID, 'VOL', 'primary')}
-                    ${renderSubsZone(matchSubsDetails.DEF, 'DEF', 'success')}
-                    ${renderSubsZone(matchSubsDetails.GK, 'ARQ', 'warning')}
-                </div>
-            </div>
-            `;
+                <!--Substitutes Side Panel-- >
+                    <div style="width: 100px; margin-top:1rem; padding-left:0.5rem; border-left:1px dashed var(--border-color);">
+                        <div style="font-size:12px; font-weight:bold; margin-bottom:8px;">Suplentes</div>
+                        ${renderSubsZone(matchSubsDetails.FWD, 'DEL', 'danger')}
+                        ${renderSubsZone(matchSubsDetails.MID, 'VOL', 'primary')}
+                        ${renderSubsZone(matchSubsDetails.DEF, 'DEF', 'success')}
+                        ${renderSubsZone(matchSubsDetails.GK, 'ARQ', 'warning')}
+                    </div>
+            </div >
+                    `;
     }
 
     updatePitch(match) {
@@ -505,23 +560,23 @@ class UI {
 
         if (startersCount !== reqOnField) {
             hasBlockingConflict = true;
-            conflictsHtml += `<div class="text-danger mb-2" style="font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);"><i class="fa-solid fa-ban"></i> Acción Requerida: Debes elegir exactamente <b>${reqOnField} Titulares</b> en total. Tienes ${startersCount} seleccionadas.</div>`;
+            conflictsHtml += `< div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);" > <i class="fa-solid fa-ban"></i> Acción Requerida: Debes elegir exactamente < b > ${reqOnField} Titulares</b > en total.Tienes ${startersCount} seleccionadas.</div > `;
         }
 
         if (gkStartersCount !== 1) {
             hasBlockingConflict = true;
-            conflictsHtml += `<div class="text-danger mb-2" style="font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);"><i class="fa-solid fa-ban"></i> Acción Requerida: Tienes ${gkStartersCount} Arqueras titulares. Debe haber <b>exactamente 1</b>.</div>`;
+            conflictsHtml += `< div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);" > <i class="fa-solid fa-ban"></i> Acción Requerida: Tienes ${gkStartersCount} Arqueras titulares.Debe haber < b > exactamente 1</b >.</div > `;
         }
 
         if (Math.abs(diff) > 2) {
             const isOver = diff > 0;
-            conflictsHtml += `<div class="text-${isOver ? 'warning' : 'danger'} mb-2">
-                <i class="fa-solid fa-scale-unbalanced"></i> Tiempos desbalanceados: Las barras suman <b>${Math.round(totalTargetMinutes)} min</b> en el partido, pero en cancha hay lugar para <b>${targetNeeded} min</b> (${reqOnField} jugadoras x ${totalMatchMinutes}m). ${isOver ? 'Sobran minutos, algunas jugarán menos de lo pedido.' : 'Faltan minutos, algunas jugarán más de lo pedido.'}
-            </div>`;
+            conflictsHtml += `< div class="text-${isOver ? 'warning' : 'danger'} mb-2" >
+                    <i class="fa-solid fa-scale-unbalanced"></i> Tiempos desbalanceados: Las barras suman < b > ${Math.round(totalTargetMinutes)} min</b > en el partido, pero en cancha hay lugar para < b > ${targetNeeded} min</b > (${reqOnField} jugadoras x ${totalMatchMinutes}m).${isOver ? 'Sobran minutos, algunas jugarán menos de lo pedido.' : 'Faltan minutos, algunas jugarán más de lo pedido.'}
+            </div > `;
         }
 
         if (!conflictsHtml) {
-            conflictsHtml = `<div class="text-success"><i class="fa-solid fa-check-circle"></i> Todo se ve balanceado. Táctica ${reqOnField} titulares elegida correctamente.</div>`;
+            conflictsHtml = `< div class="text-success" > <i class="fa-solid fa-check-circle"></i> Todo se ve balanceado.Táctica ${reqOnField} titulares elegida correctamente.</div > `;
         }
 
         return { conflictsHtml, hasBlockingConflict };
@@ -631,9 +686,9 @@ class UI {
 
         if (!plan || !plan.blocks || plan.blocks.length === 0) {
             return `
-            <div class="flex-between mb-4">
+            < div class="flex-between mb-4" >
                 <h2>Plan de Rotación</h2>
-            </div>
+            </div >
             <div class="card" style="text-align:center; padding: 3rem;">
                 <i class="fa-solid fa-clipboard-question text-muted" style="font-size:3rem; margin-bottom:1rem; display:block;"></i>
                 <p class="text-muted">Aún no se ha generado un plan para este partido.</p>
@@ -675,7 +730,7 @@ class UI {
             // Table headers (15 down to 1)
             let headersHtml = '';
             for (let min = 1; min <= qLen; min++) {
-                headersHtml += `<th style="width:30px; text-align:center; padding:0.25rem;">${min}</th>`;
+                headersHtml += `< th style = "width:30px; text-align:center; padding:0.25rem;" > ${min}</th > `;
             }
 
             let rowsHtml = '';
@@ -690,24 +745,24 @@ class UI {
 
                     if (isPlaying) {
                         currentStintMins++;
-                        cellsHtml += `<td class="bg-${posGroup.color} text-white" style="text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;">${currentStintMins}</td>`;
+                        cellsHtml += `< td class="bg-${posGroup.color} text-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;" > ${currentStintMins}</td > `;
                     } else {
                         currentStintMins = -1;
-                        cellsHtml += `<td class="bg-white" style="text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;"></td>`;
+                        cellsHtml += `< td class="bg-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;" ></td > `;
                     }
                 });
 
                 rowsHtml += `
-            <tr>
+            < tr >
                         <td style="font-weight:bold; width:150px; border: 1px solid var(--border-color); padding:0.25rem 0.5rem; background:var(--bg-card);">${p.name}</td>
                         <td style="text-align:center; font-weight:bold; width:70px; border: 1px solid var(--border-color); padding:0.25rem;">${s.played}</td>
                         ${cellsHtml}
-                    </tr>
+                    </tr >
             `;
             });
 
             tablesHtml += `
-            <div class="mb-6">
+            < div class="mb-6" >
                     <h4 style="margin-bottom:0.25rem; text-transform:uppercase; font-size: 14px;">${posGroup.name}</h4>
                     <div style="overflow-x:auto;">
                         <table style="width:100%; border-collapse: collapse; background:white; color:black; font-family:monospace;">
@@ -723,7 +778,7 @@ class UI {
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </div >
             `;
         });
 
@@ -736,14 +791,14 @@ class UI {
         for (let qNum = 1; qNum <= numPeriods; qNum++) {
             const startStr = (qNum - 1) * qLen + 1;
             const endStr = qNum * qLen;
-            quarterBtnsHtml += `<button class="${btnClass(qNum)}" onclick="window.SmartSubs.UI.currentQuarter=${qNum}; window.SmartSubs.UI.render();">P${qNum} (Min ${startStr} - ${endStr})</button>`;
+            quarterBtnsHtml += `< button class="${btnClass(qNum)}" onclick = "window.SmartSubs.UI.currentQuarter=${qNum}; window.SmartSubs.UI.render();" > P${qNum} (Min ${startStr} - ${endStr})</button > `;
         }
 
         return `
-            <style>
-                .bg-light-green { background-color: #d4f7d4; color: #aaa; }
-                .bg-white { background-color: #ffffff; color: transparent; }
-            </style>
+            < style >
+                .bg - light - green { background - color: #d4f7d4; color: #aaa; }
+                .bg - white { background - color: #ffffff; color: transparent; }
+            </style >
             
             <div class="flex-between mb-4">
                 <h2>Línea de Tiempo (Excel)</h2>
@@ -1003,7 +1058,7 @@ class UI {
                                         otherP.isStarter = false;
                                         otherP.playTarget = 0;
                                         // Visually update the other row instantly too without full re-render
-                                        const otherRow = document.querySelector(`.player-row[data-id="${otherP.id}"]`);
+                                        const otherRow = document.querySelector(`.player - row[data - id="${otherP.id}"]`);
                                         if (otherRow) {
                                             otherRow.querySelector('.p-starter').checked = false;
                                             otherRow.querySelector('.p-target').value = 1;
