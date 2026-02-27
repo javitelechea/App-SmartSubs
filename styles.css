@@ -424,3 +424,77 @@ h4 {
         max-height: 80vh;
     }
 }
+/* Grid Layout migrated from ui.js */
+.custom-checkbox { margin-right: 4px; display: inline-flex; align-items: center; gap:2px; cursor:pointer;}
+.player-row:hover { background: var(--bg-elevated); }
+.p-inline { background: transparent; border: 1px solid transparent; color: var(--text-main); transition: border 0.2s;}
+.p-inline:focus, .p-inline:hover { border-color: var(--border-color); background: var(--bg-dark); }
+
+.players-grid-layout { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+
+@media (max-width: 900px) {
+    .pitch-side { display: none !important; }
+    /* Responsive Table on Mobile */
+    .table-container-side table, .table-container-side tbody { display: block; width: 100%; border:none; }
+    .table-container-side thead { display: none; }
+    .table-container-side .player-row {
+        display: grid;
+        grid-template-columns: 40px 50px 40px 1fr 80px;
+        grid-template-areas: 
+            "act str num name pos"
+            "sld sld sld sld sld"
+            "pca pca pca pcd pcd";
+        gap: 8px;
+        padding: 12px 8px !important;
+        margin-bottom: 8px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: var(--bg-surface);
+    }
+    .table-container-side .player-row td {
+        display: flex !important;
+        align-items: center;
+        width: 100% !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+    .table-container-side .player-row td:nth-child(1) { grid-area: act; justify-content: center; }
+    .table-container-side .player-row td:nth-child(2) { grid-area: str; justify-content: center; }
+    .table-container-side .player-row td:nth-child(3) { grid-area: num; }
+    .table-container-side .player-row td:nth-child(4) { grid-area: name; }
+    .table-container-side .player-row td:nth-child(5) { grid-area: pos; }
+    .table-container-side .player-row td:nth-child(6) { grid-area: sld; padding-top: 8px !important; }
+    .table-container-side .player-row td:nth-child(7) { grid-area: pca; padding-top: 8px !important; justify-content: center; }
+    .table-container-side .player-row td:nth-child(8) { grid-area: pcd; padding-top: 8px !important; justify-content: center; }
+    
+    /* Grouping Headers */
+    .table-container-side tr.pos-group-row {
+        display: block;
+        margin-bottom: 8px;
+        border-radius: var(--radius-md);
+    }
+    .table-container-side tr.pos-group-row td {
+        display: block !important;
+        width: 100% !important;
+        padding: 12px 8px !important;
+        border: none !important;
+    }
+    .table-container-side tr.pos-group-row td > div {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 8px;
+    }
+    .table-container-side tr.pos-group-row td > div > div:first-child {
+        width: 100%;
+        justify-content: space-between !important;
+    }
+    .pos-total-mins { margin-top: 4px; display:block; }
+}
+
+@media (min-width: 1000px) {
+    .players-grid-layout { grid-template-columns: 3fr 1fr; }
+    .pitch-side { display: block !important; }
+}
+
+.dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+.table-sm th, .table-sm td { padding: 4px 6px !important; }
