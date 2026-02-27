@@ -248,7 +248,7 @@ class UI {
             }
 
             playerRows += `
-                    < tr data - id="${player.id}" class="player-row" style = "${rowOpacity}" >
+            <tr data-id="${player.id}" class="player-row" style="${rowOpacity}">
                 <td style="width:40px; text-align:center;">
                     <input type="checkbox" class="p-active" ${isActive ? 'checked' : ''} style="cursor:pointer; width:1.2rem; height:1.2rem;">
                 </td>
