@@ -312,7 +312,7 @@ class UI {
                     </div>`}
                 </td>
             </tr>
-        `;
+        `; `;
         });
 
         // Calculate conflicts
@@ -457,11 +457,11 @@ class UI {
             if (p.isActive !== false) {
                 if (p.isStarter) {
                     if (matchStartersDetails[p.positionTag]) {
-                        matchStartersDetails[p.positionTag].push(p.name || `Jugador ${p.number} `);
+                        matchStartersDetails[p.positionTag].push(p.name || `Jugador ${ p.number } `);
                     }
                 } else {
                     if (matchSubsDetails[p.positionTag]) {
-                        matchSubsDetails[p.positionTag].push(p.name || `Jugador ${p.number} `);
+                        matchSubsDetails[p.positionTag].push(p.name || `Jugador ${ p.number } `);
                     }
                 }
             }
@@ -479,11 +479,11 @@ class UI {
 
         const renderSubsZone = (names, title, colorClass) => {
             if (!names || names.length === 0) return '';
-            const namesHtml = names.map(n => `<div style = "font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" class="text-${colorClass}"> ${n}</div> `).join('');
+            const namesHtml = names.map(n => `<div style = "font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" class="text-${colorClass}"> ${ n }</div> `).join('');
             return `
                 <div style = "margin-bottom: 8px;">
                     <div style="font-size:10px; font-weight:bold; color:var(--text-muted); border-bottom:1px solid var(--border-color); padding-bottom:2px; margin-bottom:4px;">${title}</div>
-                    ${namesHtml}
+                    ${ namesHtml }
                 </div>
                 `;
         };
@@ -560,23 +560,23 @@ class UI {
 
         if (startersCount !== reqOnField) {
             hasBlockingConflict = true;
-            conflictsHtml += `<div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);"> <i class="fa-solid fa-ban"></i> Acción Requerida: Debes elegir exactamente <b> ${reqOnField} Titulares</b> en total.Tienes ${startersCount} seleccionadas.</div> `;
+            conflictsHtml += `<div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);"> <i class="fa-solid fa-ban"></i> Acción Requerida: Debes elegir exactamente <b> ${ reqOnField } Titulares</b> en total.Tienes ${ startersCount } seleccionadas.</div> `;
         }
 
         if (gkStartersCount !== 1) {
             hasBlockingConflict = true;
-            conflictsHtml += `<div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);"> <i class="fa-solid fa-ban"></i> Acción Requerida: Tienes ${gkStartersCount} Arqueras titulares.Debe haber <b> exactamente 1</b>.</div> `;
+            conflictsHtml += `<div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);"> <i class="fa-solid fa-ban"></i> Acción Requerida: Tienes ${ gkStartersCount } Arqueras titulares.Debe haber <b> exactamente 1</b>.</div> `;
         }
 
         if (Math.abs(diff) > 2) {
             const isOver = diff > 0;
             conflictsHtml += `<div class="text-${isOver ? 'warning' : 'danger'} mb-2">
-                <i class="fa-solid fa-scale-unbalanced"></i> Tiempos desbalanceados: Las barras suman <b> ${Math.round(totalTargetMinutes)} min</b> en el partido, pero en cancha hay lugar para <b> ${targetNeeded} min</b> (${reqOnField} jugadoras x ${totalMatchMinutes}m).${isOver ? 'Sobran minutos, algunas jugarán menos de lo pedido.' : 'Faltan minutos, algunas jugarán más de lo pedido.'}
+                <i class="fa-solid fa-scale-unbalanced"></i> Tiempos desbalanceados: Las barras suman <b> ${ Math.round(totalTargetMinutes) } min</b> en el partido, pero en cancha hay lugar para <b> ${ targetNeeded } min</b> (${ reqOnField } jugadoras x ${ totalMatchMinutes }m).${ isOver ? 'Sobran minutos, algunas jugarán menos de lo pedido.' : 'Faltan minutos, algunas jugarán más de lo pedido.' }
             </div> `;
         }
 
         if (!conflictsHtml) {
-            conflictsHtml = `<div class="text-success"> <i class="fa-solid fa-check-circle"></i> Todo se ve balanceado.Táctica ${reqOnField} titulares elegida correctamente.</div> `;
+            conflictsHtml = `<div class="text-success"> <i class="fa-solid fa-check-circle"></i> Todo se ve balanceado.Táctica ${ reqOnField } titulares elegida correctamente.</div> `;
         }
 
         return { conflictsHtml, hasBlockingConflict };
@@ -730,7 +730,7 @@ class UI {
             // Table headers (15 down to 1)
             let headersHtml = '';
             for (let min = 1; min <= qLen; min++) {
-                headersHtml += `<th style = "width:30px; text-align:center; padding:0.25rem;"> ${min}</th> `;
+                headersHtml += `<th style = "width:30px; text-align:center; padding:0.25rem;"> ${ min }</th> `;
             }
 
             let rowsHtml = '';
@@ -745,7 +745,7 @@ class UI {
 
                     if (isPlaying) {
                         currentStintMins++;
-                        cellsHtml += `<td class="bg-${posGroup.color} text-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;"> ${currentStintMins}</td> `;
+                        cellsHtml += `<td class="bg-${posGroup.color} text-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;"> ${ currentStintMins }</td> `;
                     } else {
                         currentStintMins = -1;
                         cellsHtml += `<td class="bg-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;"></td> `;
@@ -756,7 +756,7 @@ class UI {
             <tr>
                         <td style="font-weight:bold; width:150px; border: 1px solid var(--border-color); padding:0.25rem 0.5rem; background:var(--bg-card);">${p.name}</td>
                         <td style="text-align:center; font-weight:bold; width:70px; border: 1px solid var(--border-color); padding:0.25rem;">${s.played}</td>
-                        ${cellsHtml}
+                        ${ cellsHtml }
                     </tr>
             `;
             });
@@ -791,7 +791,7 @@ class UI {
         for (let qNum = 1; qNum <= numPeriods; qNum++) {
             const startStr = (qNum - 1) * qLen + 1;
             const endStr = qNum * qLen;
-            quarterBtnsHtml += `<button class="${btnClass(qNum)}" onclick = "window.SmartSubs.UI.currentQuarter=${qNum}; window.SmartSubs.UI.render();"> P${qNum} (Min ${startStr} - ${endStr})</button> `;
+            quarterBtnsHtml += `<button class="${btnClass(qNum)}" onclick = "window.SmartSubs.UI.currentQuarter=${qNum}; window.SmartSubs.UI.render();"> P${ qNum } (Min ${ startStr } - ${ endStr })</button> `;
         }
 
         return `
@@ -813,7 +813,7 @@ class UI {
                 ${tablesHtml}
             </div>
             
-            ${this.renderEditBlockModal()}
+            ${ this.renderEditBlockModal() }
         `;
     }
 
@@ -994,7 +994,7 @@ class UI {
 
                 if (newCount > currentCount) {
                     window.SmartSubs.store.addPlayersByPosition(pos, newCount - currentCount);
-                } else if (newCount < currentCount) {
+                } else if (newCount <currentCount) {
                     window.SmartSubs.store.removePlayersByPosition(pos, currentCount - newCount);
                 }
                 this.render();
@@ -1011,7 +1011,7 @@ class UI {
 
                 // Assign starters
                 activePosPlayers.forEach((p, idx) => {
-                    const shouldStart = idx < count;
+                    const shouldStart = idx <count;
                     p.isStarter = shouldStart;
                     p.playTarget = shouldStart ? 3 : 1; // 75% titular, 25% suplente
                 });
@@ -1169,14 +1169,14 @@ class UI {
                     const p = match.players.find(x => x.id === id);
                     return p ? p.name : '?';
                 }).join(', ');
-                csv += `${b.blockIndex + 1};${b.startMinute};${b.endMinute}; "${names}"\\n`;
+                csv += `${ b.blockIndex + 1 };${ b.startMinute };${ b.endMinute }; "${names}"\\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `rotaciones - ${match.config.matchName}.csv`;
+            a.download = `rotaciones - ${ match.config.matchName }.csv`;
             a.click();
         });
     }
@@ -1227,7 +1227,7 @@ class UI {
 
     recalcFromHere() {
         const match = window.SmartSubs.store.getCurrentMatch();
-        for (let i = 0; i < this.editingBlockIndex; i++) {
+        for (let i = 0; i <this.editingBlockIndex; i++) {
             match.plan.blocks[i].lockedPlayerIds = [...match.plan.blocks[i].onFieldPlayerIds];
         }
 
