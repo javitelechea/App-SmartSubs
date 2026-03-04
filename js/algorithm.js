@@ -13,9 +13,9 @@ class Planner {
         const totalMatchMins = quarterMins * totalPeriods;
         const blocksPerQuarter = Math.ceil(quarterMins / config.blockMinutes);
 
-        // With the 0-4 scale, 'playTarget' values are 0,1,2,3,4
+        // With the 0-10 scale, 'playTarget' values are 0 to 10
         // Translate this score directly to a fraction of the match
-        // 4 = 100%, 3 = 75%, 2 = 50%, 1 = 25%, 0 = 0% 
+        // 10 = 100%, 8 = 80%, 5 = 50%, 2 = 20%, 0 = 0% 
         const players = match.players.filter(p => p.isActive !== false && p.playTarget > 0);
 
         if (players.length < config.onFieldCount) {
@@ -31,8 +31,8 @@ class Planner {
 
         // Remove flexRatio completely. We use the fair-share expected vs actual played approach.
         players.forEach(p => {
-            // Priority 0-4 -> Fraction of match 0-1
-            const fraction = p.playTarget / 4;
+            // Priority 0-10 -> Fraction of match 0-1
+            const fraction = p.playTarget / 10;
             const targetTotalMinutes = fraction * totalMatchMins;
 
             tracking[p.id] = {
@@ -99,7 +99,7 @@ class Planner {
                 }
 
                 // Penalty for playing too long consecutively to force mid-quarter resting
-                if (t.status === 'field' && t.currentStint >= 5) {
+                if (t.status === 'field' && t.currentStint >= 10) {
                     score -= (t.currentStint * 1000);
                 }
 

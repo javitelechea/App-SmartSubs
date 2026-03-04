@@ -72,7 +72,7 @@ class Store {
             const isFirstGK = (pos === 'GK' && startIndex === 1);
             let target = 1; // Default 25% for all outfield bench players
             if (pos === 'GK') {
-                target = isFirstGK ? 4 : 0; // 100% or 0% for GKs
+                target = isFirstGK ? 10 : 0; // 100% or 0% for GKs
             }
 
             players.push({
@@ -167,11 +167,11 @@ class Store {
             // First ever GK added should be starter by default
             const isFirstGK = (pos === 'GK' && currentPosPlayers.length === 0 && i === 0);
 
-            let initialTarget = 1; // Default 25% substitute
+            let initialTarget = 2; // Default 20% substitute
             if (pos === 'GK') {
-                initialTarget = isFirstGK ? 4 : 0; // 100% or 0% for GKs
+                initialTarget = isFirstGK ? 10 : 0; // 100% or 0% for GKs
             } else {
-                initialTarget = isFirstGK ? 3 : 1; // Fallback logic (though only GKs can be isFirstGK here)
+                initialTarget = isFirstGK ? 8 : 2; // Fallback logic (though only GKs can be isFirstGK here)
             }
 
             this.addPlayer({

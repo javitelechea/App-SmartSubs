@@ -185,8 +185,8 @@ class UI {
             let targetVal = player.playTarget;
 
             // Defaulting initialization based on starter status
-            if (targetVal === undefined || targetVal === null || targetVal > 4) { // Account for legacy 60m data by resetting
-                targetVal = player.isStarter ? 4 : 0;
+            if (targetVal === undefined || targetVal === null || targetVal > 10) { // Account for legacy 60m data by resetting
+                targetVal = player.isStarter ? 10 : 0;
                 player.playTarget = targetVal; // Auto-save back to model
             }
 
@@ -273,8 +273,8 @@ class UI {
                     </select>
                 </td>
                 <td style="width:220px;">
-                    <div style="display:flex; align-items:center; gap:0.5rem; width:100%;" title="Prioridad de Minutos (0 a 4)">
-                        <input type="range" class="p-inline p-target" min="0" max="4" value="${targetVal}" style="flex:1;" data-pos="${player.positionTag}">
+                    <div style="display:flex; align-items:center; gap:0.5rem; width:100%;" title="Prioridad de Minutos (0 a 10)">
+                        <input type="range" class="p-inline p-target" min="0" max="10" value="${targetVal}" style="flex:1;" data-pos="${player.positionTag}">
                     </div>
                 </td>
                 <td style="width:120px; text-align:center;">
@@ -475,8 +475,8 @@ class UI {
         match.players.forEach(p => {
             if (p.isActive !== false) {
                 if (p.isStarter) startersCount++;
-                const targetScore = p.playTarget ?? (p.isStarter ? 4 : 0);
-                const fraction = targetScore / 4;
+                const targetScore = p.playTarget ?? (p.isStarter ? 10 : 0);
+                const fraction = targetScore / 10;
                 const tv = fraction * totalMatchMinutes;
                 totalTargetMinutes += tv;
             }
@@ -837,7 +837,7 @@ class UI {
                 if (!confirm("¿Seguro que quieres borrar todos los ajustes manuales de prioridad y volver a asignar prioridad máxima a las titulares y 0 a las suplentes?")) return;
                 const match = window.SmartSubs.store.getCurrentMatch();
                 match.players.forEach(p => {
-                    p.playTarget = p.isStarter ? 4 : 0;
+                    p.playTarget = p.isStarter ? 10 : 0;
                 });
                 window.SmartSubs.store.saveCurrentMatch();
                 this.render();
@@ -940,7 +940,7 @@ class UI {
                 activePosPlayers.forEach((p, idx) => {
                     const shouldStart = idx < count;
                     p.isStarter = shouldStart;
-                    p.playTarget = shouldStart ? 3 : 1; // 75% titular, 25% suplente
+                    p.playTarget = shouldStart ? 8 : 2; // 80% titular, 20% suplente
                 });
 
                 window.SmartSubs.store.saveCurrentMatch();
@@ -973,9 +973,9 @@ class UI {
                             p.isStarter = isStarterNow;
                             // Default reset logic: titulars 75% (3), bench 25% (1). Except GK: 100% (4), 0% (0)
                             if (p.positionTag === 'GK') {
-                                p.playTarget = isStarterNow ? 4 : 0;
+                                p.playTarget = isStarterNow ? 10 : 0;
                             } else {
-                                p.playTarget = isStarterNow ? 3 : 1;
+                                p.playTarget = isStarterNow ? 8 : 2;
                             }
 
                             // GK Rule: strictly uncheck other gks if this one is checked
@@ -988,7 +988,7 @@ class UI {
                                         const otherRow = document.querySelector(`.player - row[data - id="${otherP.id}"]`);
                                         if (otherRow) {
                                             otherRow.querySelector('.p-starter').checked = false;
-                                            otherRow.querySelector('.p-target').value = 1;
+                                            otherRow.querySelector('.p-target').value = 0;
                                         }
                                     }
                                 });
