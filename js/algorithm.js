@@ -13,25 +13,17 @@ class Planner {
         const totalMatchMins = quarterMins * totalPeriods;
         const blocksPerQuarter = Math.ceil(quarterMins / config.blockMinutes);
 
-        // With the 0-10 scale, 'playTarget' values are 0 to 10
-        // Translate this score directly to a fraction of the match
-        // 10 = 100%, 8 = 80%, 5 = 50%, 2 = 20%, 0 = 0% 
-        const players = match.players.filter(p => p.isActive !== false && p.playTarget > 0);
+        const players = match.players.filter(p => p.isActive !== false);
 
         if (players.length < config.onFieldCount) {
             alert(`No hay suficientes jugadoras (${players.length}) para cubrir la cancha (${config.onFieldCount}).`);
             return null;
         }
 
-        const totalBlocks = Math.ceil(config.totalMinutes / config.blockMinutes);
         const plan = { blocks: [] };
-
-        // Object setup
         const tracking = {};
 
-        // Remove flexRatio completely. We use the fair-share expected vs actual played approach.
         players.forEach(p => {
-            // Priority 0-10 -> Fraction of match 0-1
             const fraction = p.playTarget / 10;
             const targetTotalMinutes = fraction * totalMatchMins;
 
@@ -43,6 +35,7 @@ class Planner {
                 targetTotalMinutes: targetTotalMinutes,
                 pcAttackRoles: p.pcAttackRoles || [],
                 pcDefenseRoles: p.pcDefenseRoles || [],
+                isStarter: p.isStarter || false,
                 // Current stats
                 minutesPlayed: 0,
                 status: 'bench',
@@ -51,161 +44,148 @@ class Planner {
             };
         });
 
-        // Generate ONLY for one single quarter (minsPerPeriod blocks)
-
         // Loop over blocks for ONE quarter
         for (let b = 0; b < blocksPerQuarter; b++) {
             const blockStart = b * config.blockMinutes;
             const blockEnd = Math.min((b + 1) * config.blockMinutes, quarterMins);
             const duration = blockEnd - blockStart;
+            const remainingMins = quarterMins - blockStart;
 
             const isPCAttack = match.plan?.blocks?.[b]?.isPCAttack || false;
             const isPCDef = match.plan?.blocks?.[b]?.isPCDef || false;
-
-            const remainingMinsInQuarter = quarterMins - blockStart;
-
-            // Locked players for this specific block (if any exist from prior plans)
             const lockedPlayerIds = match.plan?.blocks?.[b]?.lockedPlayerIds || [];
 
-            // 1. Evaluate scores for each available player to play this block
+            // 1. Calculate Heuristic Scores
             const candidates = Object.values(tracking).map(t => {
-                let score = 0;
-                let alerts = [];
-
-                // Target per quarter = Total target / 4
                 const targetPerQuarter = t.targetTotalMinutes / totalPeriods;
-
-                // Expected minutes they should have played by this blockStart in the quarter
                 const expectedPlayed = (targetPerQuarter / quarterMins) * blockStart;
-
-                // Deficit multiplier: heavily boost players who are falling behind their expected ratio, 
-                // penalize those playing too much relative to their target.
                 const deficit = expectedPlayed - t.minutesPlayed;
-                const deficitScore = deficit * 100; // Increased to 100 for cleaner mathematical splits
 
-                // Base score comes from the 0-10 scale * a strong multiplier
-                const baseScore = t.playTarget * 25;
-
-                score = baseScore + deficitScore;
-
-                // REGLAS ABSOLUTAS DEL SLIDER
-                if (t.playTarget >= 10) {
-                    score += 1000000; // Siempre en cancha
-                }
-                if (t.playTarget <= 0) {
-                    score -= 1000000; // Nunca entra
+                // WEIGHTS
+                const sliderWeight = t.playTarget * 100; // Original weight
+                const deficitWeight = deficit * 30;      // Original weight
+                const persistenceBonus = (t.status === 'field' ? 200 : 0);
+                
+                // Exhaustion penalty (starts at 7m, gradual)
+                let exhaustionPenalty = 0;
+                if (t.status === 'field' && t.currentStint >= 7 && t.playTarget < 10) {
+                    exhaustionPenalty = (t.currentStint - 6) * 50;
                 }
 
-                // Evitar jugar solo 1 minuto (mínimo 2 minutos si entraron)
-                if (t.currentStint > 0 && t.currentStint < 2) {
-                    score += 1000000; // Se queda sí o sí para cumplir el mínimo
+                const score = sliderWeight + deficitWeight + persistenceBonus - exhaustionPenalty;
+
+                // 2. Classify by Constraints (ABSOLUTE RULES)
+                let mustPlay = false;
+                let cannotPlay = false;
+
+                if (t.playTarget >= 10) mustPlay = true;
+                if (t.playTarget <= 0) cannotPlay = true;
+
+                // Min rest/stint (2 min)
+                if (t.status === 'bench' && t.currentRest > 0 && t.currentRest < 2) cannotPlay = true;
+                if (t.status === 'field' && t.currentStint > 0 && t.currentStint < 2) mustPlay = true;
+
+                // Max stint (7 min) - Except slider 100%
+                if (t.status === 'field' && t.currentStint >= 7 && t.playTarget < 10) cannotPlay = true;
+
+                // Last 2 minutes - Team Freeze (No subs in/out)
+                if (remainingMins <= 2) {
+                    if (t.status === 'field') mustPlay = true;
+                    if (t.status === 'bench') cannotPlay = true;
                 }
 
-                // Evitar descansar solo 1 minuto (mínimo 2 minutos si salieron)
-                if (t.currentRest > 0 && t.currentRest < 2 && t.status === 'bench') {
-                    score -= 1000000; // Se queda afuera sí o sí para cumplir el mínimo
-                }
+                // Initial Starters (Block 0 only)
+                if (b === 0 && t.isStarter) mustPlay = true;
 
-                // Penalty for playing too long consecutively to force mid-quarter resting.
-                // Adjusted to start later and be less dominant than the deficit score.
-                if (t.status === 'field' && t.currentStint >= 8 && t.playTarget < 10) {
-                    score -= (t.currentStint - 7) * 50;
-                }
-
-                // Persistence bonus / Sub-in friction (avoid unnecessary swaps).
-                // Increased to 500 to work in tandem with the higher deficit weight.
-                if (t.status === 'field') {
-                    score += 500; 
-                }
-
-                // Evitar que alguien entre o salga en el último minuto del cuarto
-                if (remainingMinsInQuarter < 2) {
-                    if (t.status === 'field') {
-                        score += 1000000; // Fuerte bloqueo para quedarse en cancha
-                    } else if (t.status === 'bench') {
-                        score -= 1000000; // Fuerte bloqueo para quedarse en el banco
-                    }
-                }
-
-                // Role Bonus for PC
-                if (isPCAttack && t.pcAttackRoles?.length > 0) {
-                    score += 100;
-                }
-                if (isPCDef && t.pcDefenseRoles?.length > 0) {
-                    score += 100;
-                }
-
-                return { ...t, score, blockAlerts: alerts };
+                return { ...t, score, mustPlay, cannotPlay };
             });
 
-            // 1.5 Ensure at least one player of each PC role is heavily prioritized
-            const pcRolesList = ['servidora', 'paradora', 'tiradora', 'corredora', 'rebotera', 'poste'];
-            pcRolesList.forEach(role => {
-                const playersWithRole = candidates.filter(c => c.pcAttackRoles?.includes(role) || c.pcDefenseRoles?.includes(role));
-                if (playersWithRole.length > 0) {
-                    // Sort by their natural score to find who most deserves to stay/enter
-                    playersWithRole.sort((a, b) => b.score - a.score);
-                    // Massive boost to the best available player for this role (but NOT if playTarget is 0)
-                    if (playersWithRole[0].playTarget > 0) {
-                        playersWithRole[0].score += 80000;
-                    }
+            // 3. Selection Process
+            let selectedIds = new Set();
+
+            // 3a. Add forced players (mustPlay) - while respecting onFieldCount
+            candidates.filter(c => c.mustPlay && !c.cannotPlay).forEach(c => {
+                if (selectedIds.size < config.onFieldCount) {
+                    selectedIds.add(c.id);
                 }
             });
 
-            // 2. Selection Process (Greedy approach per position)
-            let selectedIds = new Set(lockedPlayerIds);
-
-            // Force starters to play at the beginning of the quarter
-            if (b === 0) {
-                players.filter(p => p.isStarter).forEach(p => selectedIds.add(p.id));
-            }
-
-            // Fill exact forced positions
+            // 3b. Fill by position requirements
             for (const [pos, reqCount] of Object.entries(config.formationRequirements)) {
                 let currentPosCount = Array.from(selectedIds).filter(id => tracking[id].positionTag === pos).length;
                 let needed = reqCount - currentPosCount;
 
                 if (needed > 0) {
-                    let posCandidates = candidates.filter(c => c.positionTag === pos && !selectedIds.has(c.id));
-                    posCandidates.sort((a, b) => b.score - a.score);
+                    let posCandidates = candidates
+                        .filter(c => c.positionTag === pos && !selectedIds.has(c.id) && !c.cannotPlay)
+                        .sort((a, b) => b.score - a.score);
 
-                    for (let i = 0; i < needed; i++) {
-                        if (posCandidates[i]) {
-                            selectedIds.add(posCandidates[i].id);
+                    for (let i = 0; i < Math.min(needed, posCandidates.length); i++) {
+                        selectedIds.add(posCandidates[i].id);
+                    }
+                }
+            }
+
+            // 3c. Fill remaining slots to reach onFieldCount
+            if (selectedIds.size < config.onFieldCount) {
+                let remainingCandidates = candidates
+                    .filter(c => !selectedIds.has(c.id) && !c.cannotPlay)
+                    .sort((a, b) => b.score - a.score);
+                
+                let idx = 0;
+                while (selectedIds.size < config.onFieldCount && idx < remainingCandidates.length) {
+                    selectedIds.add(remainingCandidates[idx++].id);
+                }
+            }
+
+            // 4. Role Validation (Mandatory PC Roles)
+            // Skip role correction in last 2 minutes to keep team "frozen"
+            if ((isPCAttack || isPCDef) && remainingMins > 2) {
+                const requiredRoles = isPCAttack ? 
+                    Object.keys(config.situationRequirements.pcAttackRequiredRoles) : 
+                    Object.keys(config.situationRequirements.pcDefenseRequiredRoles);
+
+                requiredRoles.forEach(role => {
+                    const hasRoleOnField = Array.from(selectedIds).some(id => 
+                        (isPCAttack ? tracking[id].pcAttackRoles : tracking[id].pcDefenseRoles).includes(role)
+                    );
+
+                    if (!hasRoleOnField) {
+                        // Find all possible swaps: (Best Candidate for Role, Worst Player of same position to remove)
+                        // Group candidates for the role by position
+                        const roleCandidates = candidates.filter(c => 
+                            !selectedIds.has(c.id) && !c.cannotPlay && 
+                            (isPCAttack ? c.pcAttackRoles : c.pcDefenseRoles).includes(role)
+                        );
+
+                        if (roleCandidates.length > 0) {
+                            let bestSwap = null;
+
+                            roleCandidates.forEach(cand => {
+                                // Find player to replace of SAME position to respect formation
+                                const toReplace = Array.from(selectedIds)
+                                    .map(id => tracking[id])
+                                    .filter(f => !f.mustPlay && f.positionTag === cand.positionTag)
+                                    .sort((a, b) => a.score - b.score)[0];
+
+                                if (toReplace) {
+                                    const netImpact = cand.score - toReplace.score;
+                                    if (bestSwap === null || netImpact > bestSwap.netImpact) {
+                                        bestSwap = { cand, toReplace, netImpact };
+                                    }
+                                }
+                            });
+
+                            if (bestSwap) {
+                                selectedIds.delete(bestSwap.toReplace.id);
+                                selectedIds.add(bestSwap.cand.id);
+                            }
                         }
                     }
-                }
+                });
             }
 
-            // Fill remaining slots if any are missing (only if strictMode allows or we absolutely must reach onFieldCount)
-            // Sort remaining candidates by score first!
-            const remainingCandidates = candidates.filter(c => !selectedIds.has(c.id)).sort((a, b) => b.score - a.score);
-            let remainingIndex = 0;
-
-            while (selectedIds.size < config.onFieldCount && remainingIndex < remainingCandidates.length) {
-                const p = remainingCandidates[remainingIndex++];
-
-                // If strict mode, try to respect the max allowed per position unless we have no choice
-                if (config.strictMode) {
-                    const currentPosCount = Array.from(selectedIds).filter(id => tracking[id].positionTag === p.positionTag).length;
-                    const maxAllowed = config.formationRequirements[p.positionTag] || 0;
-                    if (currentPosCount >= maxAllowed) {
-                        // Skip this player if we have enough of this position.
-                        // Wait, if we absolutely must reach 11, and we skipped too many, we might fail to reach 11.
-                        // In SmartSubs, as long as we have enough players per required position, we will never hit this.
-                        // But let's just allow it if we are desperate (which we shouldn't be).
-                        // Let's just strictly skip them if they exceed strict capacity, we'll try the next player.
-                        continue;
-                    }
-                }
-
-                selectedIds.add(p.id);
-            }
-
-            // 3. Update states for the next block
-            let blockAlertsCombined = [];
-            const onFieldPlayerIds = Array.from(selectedIds);
-
+            // 5. Update states for next block
             Object.values(tracking).forEach(t => {
                 if (selectedIds.has(t.id)) {
                     t.status = 'field';
@@ -221,18 +201,40 @@ class Planner {
 
             // Build block object
             plan.blocks.push({
-                blockIndex: b, // Will be updated during cloning
-                startMinute: blockStart, // Will be updated during cloning 
-                endMinute: blockEnd, // Will be updated during cloning
+                blockIndex: b,
+                startMinute: blockStart,
+                endMinute: blockEnd,
                 duration: duration,
                 isPCAttack,
                 isPCDef,
                 lockedPlayerIds: Array.from(lockedPlayerIds),
-                onFieldPlayerIds,
-                alerts: blockAlertsCombined
+                onFieldPlayerIds: Array.from(selectedIds),
+                alerts: []
             });
         }
 
+        // 6. CLONE the generated quarter
+        const firstQuarterBlocks = [...plan.blocks];
+        plan.blocks = [];
+        let globalBlockIndex = 0;
+        let globalStartMinute = 0;
+
+        for (let q = 0; q < totalPeriods; q++) {
+            firstQuarterBlocks.forEach((baseBlock) => {
+                plan.blocks.push({
+                    ...baseBlock,
+                    blockIndex: globalBlockIndex,
+                    startMinute: globalStartMinute,
+                    endMinute: globalStartMinute + baseBlock.duration
+                });
+                globalStartMinute += baseBlock.duration;
+                globalBlockIndex++;
+            });
+        }
+
+        return plan;
+    }
+}
         // 4. CLONE the generated quarter for all remaining quarters
         const firstQuarterBlocks = [...plan.blocks];
         plan.blocks = []; // Clear and rebuild
