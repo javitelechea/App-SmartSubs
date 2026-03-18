@@ -430,16 +430,16 @@ class UI {
                     <div style="border: 1px solid white; border-radius: 0 0 50% 50%; width: 40%; height: 15%; position:absolute; top:0; left:30%; z-index:0; border-top:none; border-bottom:2px solid white;"></div>
                     <div style="border: 1px solid white; border-radius: 50% 50% 0 0; width: 40%; height: 15%; position:absolute; bottom:0; left:30%; z-index:0; border-bottom:none; border-top:2px solid white;"></div>
                     
-                    <div style="display:flex; justify-content:space-around; z-index:1; padding-top:20px;">
+                    <div style="display:flex; flex-direction:row-reverse; justify-content:space-around; z-index:1; padding-top:20px;">
                         ${renderPitchLine(matchStartersDetails.FWD, 'danger')}
                     </div>
-                    <div style="display:flex; justify-content:space-around; z-index:1;">
+                    <div style="display:flex; flex-direction:row-reverse; justify-content:space-around; z-index:1;">
                         ${renderPitchLine(matchStartersDetails.MID, 'primary')}
                     </div>
-                    <div style="display:flex; justify-content:space-around; z-index:1;">
+                    <div style="display:flex; flex-direction:row-reverse; justify-content:space-around; z-index:1;">
                         ${renderPitchLine(matchStartersDetails.DEF, 'success')}
                     </div>
-                    <div style="display:flex; justify-content:space-around; z-index:1; padding-bottom:10px;">
+                    <div style="display:flex; flex-direction:row-reverse; justify-content:space-around; z-index:1; padding-bottom:10px;">
                         ${renderPitchLine(matchStartersDetails.GK, 'warning')}
                     </div>
                 </div>
@@ -468,9 +468,24 @@ class UI {
         const totalMatchMinutes = (config.minsPerPeriod || 15) * (config.periodsCount || 4);
         const reqOnField = config.onFieldCount || 11;
 
-        let conflictsHtml = '';
+        const positions = [
+            { id: 'GK', name: 'Arqueras' },
+            { id: 'DEF', name: 'Defensoras' },
+            { id: 'MID', name: 'Volantes' },
+            { id: 'FWD', name: 'Delanteras' }
+        ];
+
         let totalTargetMinutes = 0;
         let startersCount = 0;
+        const lineStats = {};
+
+        positions.forEach(pos => {
+            lineStats[pos.id] = {
+                name: pos.name,
+                available: (config.formationRequirements[pos.id] || 0) * totalMatchMinutes,
+                requested: 0
+            };
+        });
 
         match.players.forEach(p => {
             if (p.isActive !== false) {
@@ -479,6 +494,10 @@ class UI {
                 const fraction = targetScore / 10;
                 const tv = fraction * totalMatchMinutes;
                 totalTargetMinutes += tv;
+
+                if (lineStats[p.positionTag]) {
+                    lineStats[p.positionTag].requested += tv;
+                }
             }
         });
 
@@ -487,27 +506,41 @@ class UI {
         const gkStartersCount = match.players.filter(p => p.isActive !== false && p.isStarter && p.positionTag === 'GK').length;
 
         let hasBlockingConflict = false;
+        let conflictsHtml = '<div style="font-size: 0.95rem; line-height: 1.5;">';
 
+        // 1. Breakdown by line (Highest priority for the user)
+        conflictsHtml += `<div class="mb-4">`;
+        positions.forEach(pos => {
+            const stats = lineStats[pos.id];
+            const lineDiff = Math.round(stats.requested - stats.available);
+            let lineResult = '';
+            if (Math.abs(lineDiff) <= 1) {
+                lineResult = '<span class="text-success">OK</span>';
+            } else if (lineDiff > 0) {
+                lineResult = `<span class="text-warning">Sobran ${lineDiff} min</span>`;
+            } else {
+                lineResult = `<span class="text-danger">Faltan ${Math.abs(lineDiff)} min</span>`;
+            }
+            conflictsHtml += `<div class="text-sm">• <b>${stats.name}:</b> ${Math.round(stats.requested)} / ${stats.available} min. ${lineResult}</div>`;
+        });
+        conflictsHtml += `</div>`;
+
+        // 3. Blocking Conflicts (Must be fixed to generate)
         if (startersCount !== reqOnField) {
             hasBlockingConflict = true;
-            conflictsHtml += `<div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);"> <i class="fa-solid fa-ban"></i> Acción Requerida: Debes elegir exactamente <b> ${reqOnField} Titulares</b> en total.Tienes ${startersCount} seleccionadas.</div> `;
+            conflictsHtml += `<div class="text-danger mb-2" style="font-size: 0.9rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);">
+                <i class="fa-solid fa-ban"></i> <b>Acción Requerida:</b> Elige exactamente <b>${reqOnField} Titulares</b> (actual: ${startersCount}).
+            </div>`;
         }
 
         if (gkStartersCount !== 1) {
             hasBlockingConflict = true;
-            conflictsHtml += `<div class="text-danger mb-2" style = "font-size: 1.1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);"> <i class="fa-solid fa-ban"></i> Acción Requerida: Tienes ${gkStartersCount} Arqueras titulares.Debe haber <b> exactamente 1</b>.</div> `;
+            conflictsHtml += `<div class="text-danger mb-2" style="font-size: 0.9rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);">
+                <i class="fa-solid fa-ban"></i> <b>Acción Requerida:</b> Debe haber <b>exactamente 1 Arquera</b> titular (actual: ${gkStartersCount}).
+            </div>`;
         }
 
-        if (Math.abs(diff) > 2) {
-            const isOver = diff > 0;
-            conflictsHtml += `<div class="text-${isOver ? 'warning' : 'danger'} mb-2">
-                <i class="fa-solid fa-scale-unbalanced"></i> Tiempos desbalanceados: Las barras suman <b> ${Math.round(totalTargetMinutes)} min</b> en el partido, pero en cancha hay lugar para <b> ${targetNeeded} min</b> (${reqOnField} jugadoras x ${totalMatchMinutes}m).${isOver ? 'Sobran minutos, algunas jugarán menos de lo pedido.' : 'Faltan minutos, algunas jugarán más de lo pedido.'}
-            </div> `;
-        }
-
-        if (!conflictsHtml) {
-            conflictsHtml = `<div class="text-success"> <i class="fa-solid fa-check-circle"></i> Todo se ve balanceado.Táctica ${reqOnField} titulares elegida correctamente.</div> `;
-        }
+        conflictsHtml += '</div>';
 
         return { conflictsHtml, hasBlockingConflict };
     }
@@ -908,8 +941,11 @@ class UI {
                 const pId = tr.dataset.id;
                 const pData = match.players.find(p => p.id === pId);
 
-                // Update the changed player internally first
-                pData.playTarget = newVal;
+                if (pData) {
+                    pData.playTarget = newVal;
+                    // Instant update of the warnings block for real-time feedback
+                    this.updateWarnings(match);
+                }
 
                 saveAllInline();
             }
@@ -1006,7 +1042,9 @@ class UI {
                 this.updatePitch(match); // Re-render ONLY the pitch to maintain scroll position
                 this.updateWarnings(match); // Evaluate 11 players rule and re-activate button
             } else if (e.target.tagName === 'SELECT' || e.target.type === 'checkbox' || e.target.type === 'text') {
-                saveAllInline();
+                const match = window.SmartSubs.store.getCurrentMatch();
+                this.updateWarnings(match); // Show result instantly
+                saveAllInline(); // Persist with debounce
             }
         });
 

@@ -44,6 +44,29 @@ class Planner {
             };
         });
 
+        // 0. Identify Squad-Wide Required Roles (Always-On)
+        const squadRoles = new Set();
+        const roleHolders = {}; // role -> [playerIds]
+
+        players.forEach(p => {
+            const pRoles = new Set([...(Array.isArray(p.pcAttackRoles) ? p.pcAttackRoles : []), ...(Array.isArray(p.pcDefenseRoles) ? p.pcDefenseRoles : [])]);
+            pRoles.forEach(r => {
+                if (r && typeof r === 'string') {
+                    squadRoles.add(r);
+                    if (!roleHolders[r]) roleHolders[r] = [];
+                    roleHolders[r].push(p.id);
+                }
+            });
+        });
+
+        // Unique Role Holders must always play (per user rule)
+        const uniqueRoleHolderIds = new Set();
+        for (const [role, ids] of Object.entries(roleHolders)) {
+            if (ids.length === 1) {
+                uniqueRoleHolderIds.add(ids[0]);
+            }
+        }
+
         // Loop over blocks for ONE quarter
         for (let b = 0; b < blocksPerQuarter; b++) {
             const blockStart = b * config.blockMinutes;
@@ -56,49 +79,55 @@ class Planner {
             const lockedPlayerIds = match.plan?.blocks?.[b]?.lockedPlayerIds || [];
 
             // 1. Calculate Heuristic Scores
-            const candidates = Object.values(tracking).map(t => {
-                const targetPerQuarter = t.targetTotalMinutes / totalPeriods;
-                const expectedPlayed = (targetPerQuarter / quarterMins) * blockStart;
-                const deficit = expectedPlayed - t.minutesPlayed;
+                const candidates = Object.values(tracking).map(t => {
+                    const targetPerQuarter = t.targetTotalMinutes / totalPeriods;
+                    const expectedPlayed = (targetPerQuarter / quarterMins) * blockStart;
+                    const deficit = expectedPlayed - t.minutesPlayed;
 
-                // WEIGHTS
-                const sliderWeight = t.playTarget * 40; // Balanced influence
-                const deficitWeight = deficit * 80;     // Main target-seeking driver
-                const persistenceBonus = (t.status === 'field' ? 100 : 0); 
-                
-                // Exhaustion penalty (starts at 7m, gradual)
-                let exhaustionPenalty = 0;
-                if (t.status === 'field' && t.currentStint >= 7 && t.playTarget < 10) {
-                    exhaustionPenalty = (t.currentStint - 6) * 50;
-                }
+                    // WEIGHTS
+                    const sliderWeight = t.playTarget * 40; 
+                    const deficitWeight = deficit * 80;     
+                    const persistenceBonus = (t.status === 'field' ? 100 : 0); 
+                    
+                    let exhaustionPenalty = 0;
+                    if (t.status === 'field' && t.currentStint >= 7 && t.playTarget < 10) {
+                        exhaustionPenalty = (t.currentStint - 6) * 50;
+                    }
 
-                const score = sliderWeight + deficitWeight + persistenceBonus - exhaustionPenalty;
+                    const score = sliderWeight + deficitWeight + persistenceBonus - exhaustionPenalty;
 
-                // 2. Classify by Constraints (ABSOLUTE RULES)
-                let mustPlay = false;
-                let cannotPlay = false;
+                    // 2. Classify by Constraints (ABSOLUTE RULES)
+                    let mustPlay = false;
+                    let cannotPlay = false;
 
-                if (t.playTarget >= 10) mustPlay = true;
-                if (t.playTarget <= 0) cannotPlay = true;
+                    if (t.playTarget >= 10) mustPlay = true;
+                    if (t.playTarget <= 0) cannotPlay = true;
 
-                // Min rest/stint (2 min)
-                if (t.status === 'bench' && t.currentRest > 0 && t.currentRest < 2) cannotPlay = true;
-                if (t.status === 'field' && t.currentStint > 0 && t.currentStint < 2) mustPlay = true;
+                    // Unique Role Holder Rule (Locked on field - OVERRIDES STINT/REST)
+                    const isUniqueHolder = uniqueRoleHolderIds.has(t.id);
+                    if (isUniqueHolder) {
+                        mustPlay = true;
+                        cannotPlay = false; // Cannot be benched if you're the only one for the role
+                    }
 
-                // Max stint (7 min) - Except slider 100%
-                if (t.status === 'field' && t.currentStint >= 7 && t.playTarget < 10) cannotPlay = true;
+                    // Min rest/stint (2 min)
+                    if (!isUniqueHolder && t.status === 'bench' && t.currentRest > 0 && t.currentRest < 2) cannotPlay = true;
+                    if (!isUniqueHolder && t.status === 'field' && t.currentStint > 0 && t.currentStint < 2) mustPlay = true;
 
-                // Last 2 minutes - Team Freeze (No subs in/out)
-                if (remainingMins <= 2) {
-                    if (t.status === 'field') mustPlay = true;
-                    if (t.status === 'bench') cannotPlay = true;
-                }
+                    // Max stint (7 min) - Except slider 100% or unique holder
+                    if (!isUniqueHolder && t.status === 'field' && t.currentStint >= 7 && t.playTarget < 10) cannotPlay = true;
 
-                // Initial Starters (Block 0 only)
-                if (b === 0 && t.isStarter) mustPlay = true;
+                    // Last 2 minutes - Team Freeze
+                    if (remainingMins <= 2) {
+                        if (t.status === 'field') mustPlay = true;
+                        if (t.status === 'bench' && !isUniqueHolder) cannotPlay = true;
+                    }
 
-                return { ...t, score, mustPlay, cannotPlay };
-            });
+                    // Initial Starters (Block 0 only)
+                    if (b === 0 && t.isStarter) mustPlay = true;
+
+                    return { ...t, score, mustPlay, cannotPlay };
+                });
 
             // 3. Position-Centric Selection Process
             let selectedIds = new Set();
@@ -154,36 +183,53 @@ class Planner {
                 return null;
             }
 
-            // 4. Role Validation (Mandatory PC Roles)
-            // Skip role correction in last 2 minutes to keep team "frozen"
-            if ((isPCAttack || isPCDef) && remainingMins > 2) {
-                const requiredRoles = isPCAttack ? 
-                    Object.keys(config.situationRequirements.pcAttackRequiredRoles) : 
-                    Object.keys(config.situationRequirements.pcDefenseRequiredRoles);
+            // 4. Unified Role Validation (Always-On)
+            if (remainingMins > 2) {
+                squadRoles.forEach(role => {
+                    const hasRoleOnField = Array.from(selectedIds).some(id => {
+                        const p = tracking[id];
+                        const pRoles = [...(p.pcAttackRoles || []), ...(p.pcDefenseRoles || [])];
+                        return pRoles.includes(role);
+                    });
 
-                requiredRoles.forEach(role => {
-                    const hasRoleOnField = Array.from(selectedIds).some(id => 
-                        (isPCAttack ? tracking[id].pcAttackRoles : tracking[id].pcDefenseRoles).includes(role)
-                    );
-
-                    if (!hasRoleOnField) {
-                        // Find all possible swaps: (Best Candidate for Role, Worst Player of same position to remove)
-                        // Group candidates for the role by position
-                        const roleCandidates = candidates.filter(c => 
-                            !selectedIds.has(c.id) && !c.cannotPlay && 
-                            (isPCAttack ? c.pcAttackRoles : c.pcDefenseRoles).includes(role)
-                        );
+                        if (!hasRoleOnField) {
+                            const roleCandidates = candidates.filter(c => 
+                                !selectedIds.has(c.id) && 
+                                c.playTarget > 0 && 
+                                [...(Array.isArray(c.pcAttackRoles) ? c.pcAttackRoles : []), ...(Array.isArray(c.pcDefenseRoles) ? c.pcDefenseRoles : [])].includes(role)
+                            );
 
                         if (roleCandidates.length > 0) {
                             let bestSwap = null;
-
                             roleCandidates.forEach(cand => {
-                                // Find player to replace of SAME position to respect formation
-                                const toReplace = Array.from(selectedIds)
-                                    .map(id => tracking[id])
-                                    .filter(f => !f.mustPlay && f.positionTag === cand.positionTag)
-                                    .sort((a, b) => a.score - b.score)[0];
+                                const victims = Array.from(selectedIds)
+                                    .map(id => candidates.find(c => c.id === id))
+                                    .filter(f => 
+                                        f.positionTag === cand.positionTag && 
+                                        !f.mustPlay && 
+                                        !uniqueRoleHolderIds.has(f.id)
+                                    );
 
+                                // Victim Safeguard: Do not leave another required role empty
+                                const safeVictims = victims.filter(v => {
+                                    const vRoles = [...(v.pcAttackRoles || []), ...(v.pcDefenseRoles || [])];
+                                    if (vRoles.length === 0) return true;
+                                    
+                                    return vRoles.every(vRole => {
+                                        const candHasVRole = [...(cand.pcAttackRoles || []), ...(cand.pcDefenseRoles || [])].includes(vRole);
+                                        if (candHasVRole) return true;
+                                        
+                                        const othersOnFieldWithVRole = Array.from(selectedIds).some(id => {
+                                            if (id === v.id) return false;
+                                            const otherP = tracking[id];
+                                            const otherPRoles = [...(otherP.pcAttackRoles || []), ...(otherP.pcDefenseRoles || [])];
+                                            return otherPRoles.includes(vRole);
+                                        });
+                                        return othersOnFieldWithVRole;
+                                    });
+                                });
+
+                                const toReplace = safeVictims.sort((a, b) => a.score - b.score)[0];
                                 if (toReplace) {
                                     const netImpact = cand.score - toReplace.score;
                                     if (bestSwap === null || netImpact > bestSwap.netImpact) {
