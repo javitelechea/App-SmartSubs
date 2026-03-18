@@ -102,11 +102,13 @@ class Planner {
 
             // 3. Position-Centric Selection Process
             let selectedIds = new Set();
+            let blockDebug = { blockIndex: b + 1, counts: {} };
 
             for (const [pos, reqCount] of Object.entries(config.formationRequirements)) {
                 const posCandidates = candidates.filter(c => c.positionTag === pos);
                 const posMustPlay = posCandidates.filter(c => c.mustPlay && !c.cannotPlay);
                 const posOthers = posCandidates.filter(c => !c.mustPlay && !c.cannotPlay).sort((a, b) => b.score - a.score);
+                const posCannotPlayButAvailable = posCandidates.filter(c => c.cannotPlay && c.playTarget > 0).sort((a, b) => b.score - a.score);
 
                 // 3a. Conflict Check: Mandatory players exceed available slots
                 if (posMustPlay.length > reqCount) {
@@ -114,23 +116,42 @@ class Planner {
                     return null;
                 }
 
-                // 3b. Fill Mandatory first
+                // 3b. Check if even possible to fill position with all available players
+                const totalAvailableForPos = posCandidates.filter(c => c.playTarget > 0);
+                if (totalAvailableForPos.length < reqCount) {
+                    alert(`Imposible completar bloque ${b + 1}: Solo hay ${totalAvailableForPos.length} jugadoras disponibles para ${pos}, pero se requieren ${reqCount}.`);
+                    return null;
+                }
+
+                // 3c. Fill Mandatory first
                 posMustPlay.forEach(c => selectedIds.add(c.id));
 
-                // 3c. Fill remaining slots for this position
-                let needed = reqCount - selectedIds.size; // This is not quite correct because selectedIds includes other positions
-                // Correct way: check how many of THIS position we have
+                // 3d. Fill with 'others' (not cannotPlay)
                 let currentPosCount = Array.from(selectedIds).filter(id => tracking[id].positionTag === pos).length;
-                let posNeeded = reqCount - currentPosCount;
-
-                for (let i = 0; i < Math.min(posNeeded, posOthers.length); i++) {
+                let needed = reqCount - currentPosCount;
+                for (let i = 0; i < Math.min(needed, posOthers.length); i++) {
                     selectedIds.add(posOthers[i].id);
                 }
+
+                // 3e. Fill with 'cannotPlay' if still needed (soft rules relaxed for formation)
+                currentPosCount = Array.from(selectedIds).filter(id => tracking[id].positionTag === pos).length;
+                needed = reqCount - currentPosCount;
+                if (needed > 0) {
+                    for (let i = 0; i < Math.min(needed, posCannotPlayButAvailable.length); i++) {
+                        selectedIds.add(posCannotPlayButAvailable[i].id);
+                    }
+                }
+
+                blockDebug.counts[pos] = { required: reqCount, actual: Array.from(selectedIds).filter(id => tracking[id].positionTag === pos).length };
             }
 
-            // 3d. Final Lineup Validation (Safety Net)
-            if (selectedIds.size !== config.onFieldCount) {
-                console.error(`Error de validación en bloque ${b + 1}: Se seleccionaron ${selectedIds.size} jugadoras, se esperaban ${config.onFieldCount}.`);
+            // 3f. Final Lineup Validation & Logging
+            const isValidLineup = Object.keys(config.formationRequirements).every(pos => blockDebug.counts[pos].required === blockDebug.counts[pos].actual);
+            console.log(`Block ${b+1} Debug:`, blockDebug, isValidLineup ? "VALID" : "INVALID");
+
+            if (!isValidLineup) {
+                alert(`Error interno en bloque ${b + 1}: La formación no se completó correctamente por posición.`);
+                return null;
             }
 
             // 4. Role Validation (Mandatory PC Roles)
