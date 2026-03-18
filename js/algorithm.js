@@ -83,23 +83,32 @@ class Planner {
                 const deficit = expectedPlayed - t.minutesPlayed;
                 const deficitScore = deficit * 30; // Weight of fairness
 
-                // Base score comes from the 0-4 scale * a strong multiplier
+                // Base score comes from the 0-10 scale * a strong multiplier
                 const baseScore = t.playTarget * 25;
 
                 score = baseScore + deficitScore;
 
-                // Evitar jugar solo 1 o 2 minutos (deben jugar al menos 3 minutos si entraron a la cancha)
-                if (t.currentStint > 0 && t.currentStint < 3) {
-                    score += 10000; // Lock in deeply (prevent sub out)
+                // REGLAS ABSOLUTAS DEL SLIDER
+                if (t.playTarget >= 10) {
+                    score += 1000000; // Siempre en cancha
+                }
+                if (t.playTarget <= 0) {
+                    score -= 1000000; // Nunca entra
                 }
 
-                // Evitar descansar solo 1 o 2 minutos (deben descansar al menos 3 minutos si salieron)
-                if (t.currentRest > 0 && t.currentRest < 3 && t.status === 'bench') {
-                    score -= 10000; // Lock out deeply (prevent sub in)
+                // Evitar jugar solo 1 minuto (mínimo 2 minutos si entraron)
+                if (t.currentStint > 0 && t.currentStint < 2) {
+                    score += 1000000; // Se queda sí o sí para cumplir el mínimo
+                }
+
+                // Evitar descansar solo 1 minuto (mínimo 2 minutos si salieron)
+                if (t.currentRest > 0 && t.currentRest < 2 && t.status === 'bench') {
+                    score -= 1000000; // Se queda afuera sí o sí para cumplir el mínimo
                 }
 
                 // Penalty for playing too long consecutively to force mid-quarter resting
-                if (t.status === 'field' && t.currentStint >= 10) {
+                // Las que tienen slider al 100% (10) ignoran esta penalización
+                if (t.status === 'field' && t.currentStint >= 10 && t.playTarget < 10) {
                     score -= (t.currentStint * 1000);
                 }
 
@@ -111,14 +120,10 @@ class Planner {
                 // Evitar que alguien entre o salga en el último minuto del cuarto
                 if (remainingMinsInQuarter < 2) {
                     if (t.status === 'field') {
-                        score += 50000; // Fuerte bloqueo para quedarse en cancha
+                        score += 1000000; // Fuerte bloqueo para quedarse en cancha
                     } else if (t.status === 'bench') {
-                        score -= 50000; // Fuerte bloqueo para quedarse en el banco
+                        score -= 1000000; // Fuerte bloqueo para quedarse en el banco
                     }
-                }
-
-                if (t.playTarget <= 0) {
-                    score -= 999999; // NEVER pick someone with 0 priority unless literally no one else exists
                 }
 
                 // Role Bonus for PC
@@ -139,8 +144,10 @@ class Planner {
                 if (playersWithRole.length > 0) {
                     // Sort by their natural score to find who most deserves to stay/enter
                     playersWithRole.sort((a, b) => b.score - a.score);
-                    // Massive boost to the best available player for this role
-                    playersWithRole[0].score += 80000;
+                    // Massive boost to the best available player for this role (but NOT if playTarget is 0)
+                    if (playersWithRole[0].playTarget > 0) {
+                        playersWithRole[0].score += 80000;
+                    }
                 }
             });
 
