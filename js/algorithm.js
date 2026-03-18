@@ -112,9 +112,10 @@ class Planner {
                     score -= (t.currentStint * 1000);
                 }
 
-                // Persistence bonus / Sub-in friction (avoid unnecessary swaps when tied)
+                // Persistence bonus / Sub-in friction (avoid unnecessary swaps).
+                // A higher value makes blocks longer and avoids "2 min in, 2 min out" jitter.
                 if (t.status === 'field') {
-                    score += 20;
+                    score += 500; 
                 }
 
                 // Evitar que alguien entre o salga en el último minuto del cuarto
