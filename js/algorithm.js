@@ -81,7 +81,7 @@ class Planner {
                 // Deficit multiplier: heavily boost players who are falling behind their expected ratio, 
                 // penalize those playing too much relative to their target.
                 const deficit = expectedPlayed - t.minutesPlayed;
-                const deficitScore = deficit * 30; // Weight of fairness
+                const deficitScore = deficit * 100; // Increased to 100 for cleaner mathematical splits
 
                 // Base score comes from the 0-10 scale * a strong multiplier
                 const baseScore = t.playTarget * 25;
@@ -107,16 +107,15 @@ class Planner {
                 }
 
                 // Penalty for playing too long consecutively to force mid-quarter resting.
-                // Starts gradually at 7 minutes, becoming stronger.
-                // Slider 100% (10) players ignore this.
-                if (t.status === 'field' && t.currentStint >= 7 && t.playTarget < 10) {
-                    score -= (t.currentStint - 6) * 100;
+                // Adjusted to start later and be less dominant than the deficit score.
+                if (t.status === 'field' && t.currentStint >= 8 && t.playTarget < 10) {
+                    score -= (t.currentStint - 7) * 50;
                 }
 
                 // Persistence bonus / Sub-in friction (avoid unnecessary swaps).
-                // Lowered from 500 to 200 for better balance.
+                // Increased to 500 to work in tandem with the higher deficit weight.
                 if (t.status === 'field') {
-                    score += 200; 
+                    score += 500; 
                 }
 
                 // Evitar que alguien entre o salga en el último minuto del cuarto
