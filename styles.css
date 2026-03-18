@@ -447,17 +447,23 @@ h4 {
     .table-container-side thead { display: none; }
     .table-container-side .player-row {
         display: grid;
-        grid-template-columns: 40px 50px 40px 1fr 80px;
+        grid-template-columns: 35px 45px 35px 1fr 70px;
         grid-template-areas: 
             "act str num name pos"
             "sld sld sld sld sld"
             "pca pca pca pcd pcd";
-        gap: 8px;
-        padding: 12px 8px !important;
-        margin-bottom: 8px;
+        gap: 4px;
+        padding: 8px !important;
+        margin-bottom: 6px;
         border: 1px solid var(--border-color);
         border-radius: var(--radius-md);
         background: var(--bg-surface);
+        font-size: 12px;
+    }
+    .table-container-side .player-row .form-control {
+        height: 24px;
+        padding: 2px 4px;
+        font-size: 12px;
     }
     .table-container-side .player-row td {
         display: flex !important;
@@ -471,19 +477,19 @@ h4 {
     .table-container-side .player-row td:nth-child(3) { grid-area: num; }
     .table-container-side .player-row td:nth-child(4) { grid-area: name; }
     .table-container-side .player-row td:nth-child(5) { grid-area: pos; }
-    .table-container-side .player-row td:nth-child(6) { grid-area: sld; padding-top: 8px !important; }
-    .table-container-side .player-row td:nth-child(7) { grid-area: pca; padding-top: 8px !important; justify-content: center; }
-    .table-container-side .player-row td:nth-child(8) { grid-area: pcd; padding-top: 8px !important; justify-content: center; }
+    .table-container-side .player-row td:nth-child(6) { grid-area: sld; padding-top: 4px !important; }
+    .table-container-side .player-row td:nth-child(7) { grid-area: pca; padding-top: 4px !important; justify-content: center; }
+    .table-container-side .player-row td:nth-child(8) { grid-area: pcd; padding-top: 4px !important; justify-content: center; }
     
     .table-container-side tr.pos-group-row {
         display: block;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         border-radius: var(--radius-md);
     }
     .table-container-side tr.pos-group-row td {
         display: block !important;
         width: 100% !important;
-        padding: 12px 8px !important;
+        padding: 8px !important;
         border: none !important;
     }
     .table-container-side tr.pos-group-row td > div {
