@@ -106,16 +106,17 @@ class Planner {
                     score -= 1000000; // Se queda afuera sí o sí para cumplir el mínimo
                 }
 
-                // Penalty for playing too long consecutively to force mid-quarter resting
-                // Las que tienen slider al 100% (10) ignoran esta penalización
-                if (t.status === 'field' && t.currentStint >= 10 && t.playTarget < 10) {
-                    score -= (t.currentStint * 1000);
+                // Penalty for playing too long consecutively to force mid-quarter resting.
+                // Starts gradually at 7 minutes, becoming stronger.
+                // Slider 100% (10) players ignore this.
+                if (t.status === 'field' && t.currentStint >= 7 && t.playTarget < 10) {
+                    score -= (t.currentStint - 6) * 100;
                 }
 
                 // Persistence bonus / Sub-in friction (avoid unnecessary swaps).
-                // A higher value makes blocks longer and avoids "2 min in, 2 min out" jitter.
+                // Lowered from 500 to 200 for better balance.
                 if (t.status === 'field') {
-                    score += 500; 
+                    score += 200; 
                 }
 
                 // Evitar que alguien entre o salga en el último minuto del cuarto
