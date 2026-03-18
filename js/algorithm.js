@@ -235,34 +235,6 @@ class Planner {
         return plan;
     }
 }
-        // 4. CLONE the generated quarter for all remaining quarters
-        const firstQuarterBlocks = [...plan.blocks];
-        plan.blocks = []; // Clear and rebuild
-
-        let globalBlockIndex = 0;
-        let globalStartMinute = 0;
-
-        for (let q = 0; q < totalPeriods; q++) {
-            firstQuarterBlocks.forEach((baseBlock) => {
-                const clonedBlock = {
-                    ...baseBlock,
-                    blockIndex: globalBlockIndex,
-                    startMinute: globalStartMinute,
-                    endMinute: globalStartMinute + baseBlock.duration,
-                    // In a more complex app, we might check if user manually locked a block in Q2, Q3. 
-                    // But for this simplified repeating plan, we just mirror exactly.
-                };
-
-                plan.blocks.push(clonedBlock);
-
-                globalStartMinute += baseBlock.duration;
-                globalBlockIndex++;
-            });
-        }
-
-        return plan;
-    }
-}
 
 window.SmartSubs = window.SmartSubs || {};
 window.SmartSubs.Planner = Planner;
