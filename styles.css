@@ -430,10 +430,18 @@ h4 {
 .p-inline { background: transparent; border: 1px solid transparent; color: var(--text-main); transition: border 0.2s;}
 .p-inline:focus, .p-inline:hover { border-color: var(--border-color); background: var(--bg-dark); }
 
-.players-grid-layout { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+.players-grid-layout { 
+    display: grid; 
+    gap: 1.5rem; 
+    grid-template-columns: 1fr;
+}
+
+.sidebar-wrapper { display: contents; }
+.analysis-side { order: -1; }
+.table-container-side { order: 0; }
+.pitch-side { display: none !important; }
 
 @media (max-width: 900px) {
-    .pitch-side { display: none !important; }
     /* Responsive Table on Mobile */
     .table-container-side table, .table-container-side tbody { display: block; width: 100%; border:none; }
     .table-container-side thead { display: none; }
@@ -467,7 +475,6 @@ h4 {
     .table-container-side .player-row td:nth-child(7) { grid-area: pca; padding-top: 8px !important; justify-content: center; }
     .table-container-side .player-row td:nth-child(8) { grid-area: pcd; padding-top: 8px !important; justify-content: center; }
     
-    /* Grouping Headers */
     .table-container-side tr.pos-group-row {
         display: block;
         margin-bottom: 8px;
@@ -487,13 +494,25 @@ h4 {
     .table-container-side tr.pos-group-row td > div > div:first-child {
         width: 100%;
         justify-content: space-between !important;
+        gap: 0.5rem;
     }
     .pos-total-mins { margin-top: 4px; display:block; }
 }
 
 @media (min-width: 1000px) {
-    .players-grid-layout { grid-template-columns: 3fr 1fr; }
-    .pitch-side { display: block !important; }
+    .players-grid-layout { 
+        grid-template-columns: 3fr 1fr; 
+        align-items: start;
+    }
+    .sidebar-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        position: sticky;
+        top: 1rem;
+    }
+    .analysis-side { order: 0; }
+    .pitch-side { display: block !important; order: 0; }
 }
 
 .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }

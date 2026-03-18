@@ -21,22 +21,25 @@ class UI {
                 <div class="flex-between mb-4" style="padding-bottom:1rem; border-bottom:1px solid var(--border-color);">
                     <div style="display:flex; align-items:center; gap: 1rem;">
                         <h1 style="margin:0; font-size:1.5rem;"><i class="fa-solid fa-stopwatch text-primary"></i> SmartSubs</h1>
-                        <span class="badge badge-gray" style="font-size: 0.9rem;">${match.config.matchName} | ${match.config.opponent ? 'vs ' + match.config.opponent : 'Sin rival'} | ${match.config.date}</span>
+                        <span class="badge badge-gray" style="font-size: 0.9rem;">${match.config.matchName}${match.config.opponent ? ' vs ' + match.config.opponent : ''} | ${match.config.date}</span>
                     </div>
                     <div>
                         <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.UI.navigate('home')"><i class="fa-solid fa-home"></i> Inicio</button>
                     </div>
                 </div>
                 
-                <div class="nav-tabs">
-                    <button class="nav-link ${this.currentRoute === 'players' ? 'active' : ''}" data-route="players">1. Vista de Equipo</button>
-                    <button class="nav-link ${this.currentRoute === 'plan' ? 'active' : ''}" data-route="plan">2. Plan de Rotación</button>
+                <div class="card mb-4" style="padding: 0.75rem 1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border-color: var(--accent-primary);">
+                    <div class="nav-tabs" style="display:flex; gap:0.25rem; border:none; margin:0; padding:0;">
+                        <button class="nav-link tab-btn ${this.currentRoute === 'players' ? 'active' : ''}" data-route="players" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.9rem;">1. Vista de Equipo</button>
+                        <button class="nav-link tab-btn ${this.currentRoute === 'plan' ? 'active' : ''}" data-route="plan" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.9rem;">2. Plan de Rotación</button>
+                    </div>
+                    <div id="active-view-controls" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                        ${this.currentRoute === 'players' ? this.renderPlayerControls(match) : this.renderPlanControls(match)}
+                    </div>
                 </div>
                 
-                <div class="mt-4">
-                <div class="mt-4">
-                    ${this.currentRoute === 'players' ? this.renderPlayers() : ''}
-                    ${this.currentRoute === 'plan' ? this.renderPlan() : ''}
+                <div class="view-content" style="margin-top:1rem;">
+                    ${this.currentRoute === 'players' ? this.renderPlayersBody(match) : this.renderPlanBody(match)}
                 </div>
             `;
         }
@@ -163,8 +166,28 @@ class UI {
 
     // --- Players Screen (Team View) ---
 
-    renderPlayers() {
-        const match = window.SmartSubs.store.getCurrentMatch();
+    renderPlayerControls(match) {
+        const config = match.config || {};
+        const { hasBlockingConflict } = this.calculateConflicts(match);
+        const genBtnDisabled = hasBlockingConflict ? 'disabled' : '';
+
+        return `
+            <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:0.5rem;" title="Períodos a jugar">
+                    <span class="text-sm text-muted">Per.:</span>
+                    <input type="number" id="cfg-periods" class="form-control" value="${config.periodsCount || 4}" min="1" max="10" style="width:50px; text-align:center; padding:4px;">
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem;" title="Minutos por período">
+                    <span class="text-sm text-muted">Min:</span>
+                    <input type="number" id="cfg-mins" class="form-control" value="${config.minsPerPeriod || 15}" min="5" max="45" style="width:50px; text-align:center; padding:4px;">
+                </div>
+                <button class="btn btn-warning btn-sm" id="btn-reset-mins" title="Restablecer ajustes"><i class="fa-solid fa-rotate-left"></i> Restablecer</button>
+                <button class="btn btn-success btn-sm" id="auto-gen-from-team" ${genBtnDisabled}><i class="fa-solid fa-wand-magic-sparkles"></i> Generar Plan</button>
+            </div>
+        `;
+    }
+
+    renderPlayersBody(match) {
         const players = match.players || [];
         const config = match.config || {};
         const totalMatchMinutes = (config.minsPerPeriod || 15) * (config.periodsCount || 4);
@@ -315,28 +338,12 @@ class UI {
         `;
         });
 
-        // Calculate conflicts
-        const { conflictsHtml, hasBlockingConflict } = this.calculateConflicts(match);
-        const genBtnDisabled = hasBlockingConflict ? 'disabled' : '';
-
-        const pitchHtml = this.generatePitchHtml(players);
+        // Removed control section (now in header)
+        const { conflictsHtml } = this.calculateConflicts(match);
+        const playersForPitch = players;
+        const pitchHtml = this.generatePitchHtml(playersForPitch);
 
         return `
-                <div class="mb-4" style = "display:flex; justify-content:flex-end;">
-                    <div class="gap-4" style="display:flex; align-items:center; flex-wrap:wrap;">
-                        <div style="display:flex; align-items:center; gap:0.5rem;" title="Períodos a jugar">
-                            <span class="text-sm text-muted">Períodos:</span>
-                            <input type="number" id="cfg-periods" class="form-control" value="${config.periodsCount || 4}" min="1" max="10" style="width:60px; text-align:center; padding:4px;">
-                        </div>
-                        <div style="display:flex; align-items:center; gap:0.5rem;" title="Minutos de reloj ininterrumpido por período">
-                            <span class="text-sm text-muted">Min/Per:</span>
-                            <input type="number" id="cfg-mins" class="form-control" value="${config.minsPerPeriod || 15}" min="5" max="45" style="width:60px; text-align:center; padding:4px;">
-                        </div>
-                        <button class="btn btn-warning" id="btn-reset-mins" title="Restablecer todos los jugadores al máximo/mínimo"><i class="fa-solid fa-rotate-left"></i> Restablecer Ajustes</button>
-                        <button class="btn btn-success" id="auto-gen-from-team" ${genBtnDisabled}><i class="fa-solid fa-wand-magic-sparkles"></i> Generar Plan de Partido</button>
-                    </div>
-            </div>
-
             <div class="players-grid-layout">
                 <div class="table-container-side">
                     <div class="card table-container mb-6" style="padding: 0;">
@@ -358,18 +365,21 @@ class UI {
                             </tbody>
                         </table>
                     </div>
-                    
-                    <div class="card bg-elevated" style="border-left: 4px solid var(--accent-primary);">
-                        <h4 style="margin-bottom:0.5rem;"><i class="fa-solid fa-clipboard-check"></i> Análisis Preliminar</h4>
-                        <div id="analysis-warnings-container">${conflictsHtml}</div>
-                    </div>
                 </div>
-                <div class="pitch-side">
-                    <div class="card" style="position:sticky; top:1rem;">
-                        <h4 style="text-align:center; margin:0;">Táctica en Cancha</h4>
-                        <p class="text-muted text-sm" style="text-align:center;">En base a titulares elegidas</p>
-                        <div id="pitch-container-wrapper">
-                            ${pitchHtml}
+
+                <div class="sidebar-wrapper">
+                    <div class="analysis-side">
+                        <div class="card bg-elevated" style="border-left: 4px solid var(--accent-warning); padding: 0.75rem;">
+                            <h5 style="margin-bottom:0.5rem; font-size: 13px; font-weight: bold;"><i class="fa-solid fa-clipboard-check"></i> Análisis Preliminar</h5>
+                            <div id="analysis-warnings-container">${conflictsHtml}</div>
+                        </div>
+                    </div>
+
+                    <div class="pitch-side">
+                        <div class="card" style="padding: 0.5rem;">
+                            <div id="pitch-container-wrapper">
+                                ${pitchHtml}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -421,7 +431,7 @@ class UI {
         return `
                 <div style = "display:flex; gap: 1rem; align-items:flex-start;">
                 <!--Pitch-->
-                <div class="mini-pitch" style="flex:1; background:#2e7d32; border: 2px solid white; border-radius: 4px; height: 350px; position: relative; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; margin-top:1rem; overflow:hidden;">
+                <div class="mini-pitch" style="flex:1; background:#2e7d32; border: 2px solid white; border-radius: 4px; height: 260px; position: relative; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; margin-top:1rem; overflow:hidden;">
                     <!--23m lines-->
                     <div style="border-top: 1px solid rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.4); position: absolute; top:25%; bottom:25%; left:0; right:0; z-index:0;"></div>
                     <!--center line-->
@@ -521,22 +531,58 @@ class UI {
             } else {
                 lineResult = `<span class="text-danger">Faltan ${Math.abs(lineDiff)} min</span>`;
             }
-            conflictsHtml += `<div class="text-sm">• <b>${stats.name}:</b> ${Math.round(stats.requested)} / ${stats.available} min. ${lineResult}</div>`;
+            conflictsHtml += `<div class="text-xs" style="font-size: 11px; line-height: 1.4;">• <b>${stats.name}:</b> ${Math.round(stats.requested)} / ${stats.available} min. ${lineResult}</div>`;
         });
         conflictsHtml += `</div>`;
+
+        // 1.5. Unique Role Holder Alerts (Specific Request)
+        const roleCounts = {}; // roleValue -> [playerNames]
+        match.players.forEach(p => {
+            if (p.isActive !== false) {
+                const combined = [...(p.pcAttackRoles || []), ...(p.pcDefenseRoles || [])];
+                const uniqueRoles = new Set(combined);
+                uniqueRoles.forEach(r => {
+                    if (r) {
+                        if (!roleCounts[r]) roleCounts[r] = [];
+                        roleCounts[r].push(p.name);
+                    }
+                });
+            }
+        });
+
+        const iconMap = {
+            tiradora: 'T', servidora: 'S', paradora: 'P', 
+            corredora: 'C', rebotera: 'R', poste: 'P'
+        };
+
+        const uniqueRoleAlerts = [];
+        for (const [roleVal, names] of Object.entries(roleCounts)) {
+            if (names.length === 1) {
+                const icon = iconMap[roleVal] || roleVal.substring(0, 1).toUpperCase();
+                uniqueRoleAlerts.push(`Hay una sola <b>${icon}</b> (${roleVal}): <b>${names[0]}</b> va a jugar todo el partido.`);
+            }
+        }
+
+        if (uniqueRoleAlerts.length > 0) {
+            conflictsHtml += `<div class="mb-3" style="border-left: 3px solid var(--accent-warning); padding-left: 0.5rem; background: rgba(245, 158, 11, 0.1); padding-top: 0.25rem; padding-bottom: 0.25rem; border-radius: 0 4px 4px 0;">`;
+            uniqueRoleAlerts.forEach(alertHtml => {
+                conflictsHtml += `<div class="text-xs" style="color: var(--accent-warning); font-size: 11px;"><i class="fa-solid fa-lock"></i> ${alertHtml}</div>`;
+            });
+            conflictsHtml += `</div>`;
+        }
 
         // 3. Blocking Conflicts (Must be fixed to generate)
         if (startersCount !== reqOnField) {
             hasBlockingConflict = true;
-            conflictsHtml += `<div class="text-danger mb-2" style="font-size: 0.9rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);">
-                <i class="fa-solid fa-ban"></i> <b>Acción Requerida:</b> Elige exactamente <b>${reqOnField} Titulares</b> (actual: ${startersCount}).
+            conflictsHtml += `<div class="text-danger mb-2" style="font-size: 0.8rem; padding: 4px 8px; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);">
+                <i class="fa-solid fa-ban"></i> <b>Acción Requerida:</b> Elige exactamente <b>${reqOnField} Titulares</b> (${startersCount}).
             </div>`;
         }
 
         if (gkStartersCount !== 1) {
             hasBlockingConflict = true;
-            conflictsHtml += `<div class="text-danger mb-2" style="font-size: 0.9rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);">
-                <i class="fa-solid fa-ban"></i> <b>Acción Requerida:</b> Debe haber <b>exactamente 1 Arquera</b> titular (actual: ${gkStartersCount}).
+            conflictsHtml += `<div class="text-danger mb-2" style="font-size: 0.8rem; padding: 4px 8px; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--accent-danger);">
+                <i class="fa-solid fa-ban"></i> <b>Acción Requerida:</b> Debe haber <b>exactamente 1 Arquera</b> titular (${gkStartersCount}).
             </div>`;
         }
 
@@ -643,8 +689,15 @@ class UI {
     }
 
     // --- Plan Screen ---
-    renderPlan() {
-        const match = window.SmartSubs.store.getCurrentMatch();
+    renderPlanControls(match) {
+        const plan = match.plan;
+        if (!plan || !plan.blocks || plan.blocks.length === 0) return '';
+        return `
+            <button class="btn btn-outline btn-sm" data-action="export-csv"><i class="fa-solid fa-download"></i> Exportar CSV</button>
+        `;
+    }
+
+    renderPlanBody(match) {
         const plan = match.plan;
 
         if (!plan || !plan.blocks || plan.blocks.length === 0) {
@@ -761,14 +814,8 @@ class UI {
         }
 
         return `
-            
-            
-            <div class="flex-between mb-4">
-                <h2>Línea de Tiempo (Excel)</h2>
-                <button class="btn btn-outline" data-action="export-csv"><i class="fa-solid fa-download"></i> Exportar CSV</button>
-            </div>
-
-            <div class="mb-4" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <div class="mb-4" style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; justify-content:center;">
+                <div style="font-weight:bold; font-size:0.9rem; margin-right:1rem;">Línea de Tiempo:</div>
                 ${quarterBtnsHtml}
             </div>
 
