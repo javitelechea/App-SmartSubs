@@ -62,9 +62,9 @@ class Planner {
                 const deficit = expectedPlayed - t.minutesPlayed;
 
                 // WEIGHTS
-                const sliderWeight = t.playTarget * 100; // Original weight
-                const deficitWeight = deficit * 30;      // Original weight
-                const persistenceBonus = (t.status === 'field' ? 200 : 0);
+                const sliderWeight = t.playTarget * 40; // Balanced influence
+                const deficitWeight = deficit * 80;     // Main target-seeking driver
+                const persistenceBonus = (t.status === 'field' ? 100 : 0); 
                 
                 // Exhaustion penalty (starts at 7m, gradual)
                 let exhaustionPenalty = 0;
