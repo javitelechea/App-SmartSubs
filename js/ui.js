@@ -665,27 +665,30 @@ class UI {
 
             let rowsHtml = '';
             posPlayers.forEach(p => {
-                let s = stats[p.id];
+                let playedInQuarter = 0;
+                qBlocks.forEach(b => {
+                    if (b.onFieldPlayerIds.includes(p.id)) playedInQuarter += b.duration;
+                });
 
                 let cellsHtml = '';
-                let currentStintMins = -1; // -1 means off field
+                let currentStintMins = 0; // 0 means off field
 
                 qBlocks.forEach((b, i) => {
                     const isPlaying = b.onFieldPlayerIds.includes(p.id);
 
                     if (isPlaying) {
                         currentStintMins++;
-                        cellsHtml += `<td class="bg-${posGroup.color} text-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;"> ${currentStintMins}</td> `;
+                        cellsHtml += `<td class="bg-${posGroup.color} text-white" style="text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;">${currentStintMins}</td>`;
                     } else {
-                        currentStintMins = -1;
-                        cellsHtml += `<td class="bg-white" style = "text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;"></td> `;
+                        currentStintMins = 0;
+                        cellsHtml += `<td class="bg-white" style="text-align:center; padding:0.25rem; border: 1px solid var(--border-color); font-weight:bold; font-size:12px;"></td>`;
                     }
                 });
 
                 rowsHtml += `
             <tr>
                         <td style="font-weight:bold; width:150px; border: 1px solid var(--border-color); padding:0.25rem 0.5rem; background:var(--bg-card);">${p.name}</td>
-                        <td style="text-align:center; font-weight:bold; width:70px; border: 1px solid var(--border-color); padding:0.25rem;">${s.played}</td>
+                        <td style="text-align:center; font-weight:bold; width:70px; border: 1px solid var(--border-color); padding:0.25rem;">${playedInQuarter}</td>
                         ${cellsHtml}
                     </tr>
             `;
@@ -699,7 +702,7 @@ class UI {
                             <thead style="background:#e0e0e0;">
                                 <tr>
                                     <th style="text-align:left; padding:0.25rem 0.5rem;">Jugadora</th>
-                                    <th style="padding:0.25rem; font-size:10px;">Jugado</th>
+                                    <th style="padding:0.25rem; font-size:10px;">Min/4º</th>
                                     ${headersHtml}
                                 </tr>
                             </thead>
