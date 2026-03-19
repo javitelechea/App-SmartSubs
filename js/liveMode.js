@@ -287,11 +287,12 @@ window.SmartSubs.LiveMode = (() => {
             alerts.push({ type: 'danger', msg: "FALTA ARQUERA." });
         }
         
+        // BUG FIX: usa onFieldPlayers (variable correcta), no onField (que no existe en este scope)
         const allSquadRoles = new Set();
         liveState.players.forEach(p => (p.roles || []).forEach(r => allSquadRoles.add(r)));
         const mandatoryRoles = ['tiradora', 'paradora', 'servidora', 'corredora', 'rebotera', 'poste'];
         mandatoryRoles.forEach(role => {
-            if (allSquadRoles.has(role) && !onField.some(p => (p.roles || []).includes(role))) {
+            if (allSquadRoles.has(role) && !onFieldPlayers.some(p => (p.roles || []).includes(role))) {
                 alerts.push({ type: 'warning', msg: `Falta: ${role.toUpperCase()}` });
             }
         });
@@ -481,34 +482,32 @@ window.SmartSubs.LiveMode = (() => {
             render();
             return;
         }
-        if (timerEl) {
-            const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2, '0')}`;
-            timerEl.textContent = formatTime(liveState.currentTime);
-            
-            liveState.players.forEach(p => {
-                const pEl = document.querySelector(`[data-id="${p.id}"]`);
-                if (pEl) {
-                    const stintEl = pEl.querySelector('.text-white, .player-rest');
-                    if (stintEl) stintEl.textContent = formatTime(p.currentStint);
-                }
-            });
-
-            liveState.fieldPenalties.forEach(pen => {
-                const pEl = document.querySelector(`[data-penalty-id="${pen.id}"]`);
-                if (pEl) {
-                    const timerEl = pEl.querySelector('div:last-child');
-                    if (timerEl) timerEl.textContent = formatTime(pen.elapsedTime);
-                }
-            });
-
-            const sugEl = document.getElementById('plan-suggestions');
-            if (sugEl) {
-                const html = renderSuggestions();
-                const counts = (html.match(/suggestion-item/g) || []).length;
-                if (counts > lastSuggestionCount) playAlertSound();
-                lastSuggestionCount = counts;
-                sugEl.innerHTML = html;
+        const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2, '0')}`;
+        timerEl.textContent = formatTime(liveState.currentTime);
+        
+        liveState.players.forEach(p => {
+            const pEl = document.querySelector(`[data-id="${p.id}"]`);
+            if (pEl) {
+                const stintEl = pEl.querySelector('.text-white, .player-rest');
+                if (stintEl) stintEl.textContent = formatTime(p.currentStint);
             }
+        });
+
+        liveState.fieldPenalties.forEach(pen => {
+            const pEl = document.querySelector(`[data-penalty-id="${pen.id}"]`);
+            if (pEl) {
+                const penTimerEl = pEl.querySelector('div:last-child');
+                if (penTimerEl) penTimerEl.textContent = formatTime(pen.elapsedTime);
+            }
+        });
+
+        const sugEl = document.getElementById('plan-suggestions');
+        if (sugEl) {
+            const html = renderSuggestions();
+            const counts = (html.match(/suggestion-item/g) || []).length;
+            if (counts > lastSuggestionCount) playAlertSound();
+            lastSuggestionCount = counts;
+            sugEl.innerHTML = html;
         }
     }
 
@@ -525,7 +524,8 @@ window.SmartSubs.LiveMode = (() => {
         
         if (!currentBlock) return '<p class="text-muted">Fin del plan.</p>';
         const planIds = currentBlock.onFieldPlayerIds;
-        const liveIds = liveState.players.filter(p => p.isOnField).map(p => p.id);
+        // Excluir jugadoras suspendidas que ya no estan en cancha (tienen tarjeta)
+        const liveIds = liveState.players.filter(p => p.isOnField && !p.isSuspended).map(p => p.id);
         const inIds = planIds.filter(id => !liveIds.includes(id));
         const outIds = liveIds.filter(id => !planIds.includes(id));
         if (inIds.length === 0 && outIds.length === 0) return '<p class="text-success">Sincronizado.</p>';
