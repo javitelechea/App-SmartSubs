@@ -32,6 +32,12 @@ window.SmartSubs.LiveMode = (() => {
     function init(match) {
         if (!match) return;
         
+        // CRITICAL: Siempre limpiar interval al iniciar para evitar múltiples timers
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        
         // 1. Create the immutable origin snapshot
         originSnapshot = window.SmartSubs.Utils.deepClone(match);
         
@@ -39,6 +45,8 @@ window.SmartSubs.LiveMode = (() => {
         const saved = loadSession();
         if (saved && saved.matchId === match.id) {
             liveState = saved;
+            // Si estaba jugando, volver a estado paused al reiniciar (evitar auto-play)
+            if (liveState.status === 'playing') liveState.status = 'paused';
             // Migration: ensure new fields exist in old sessions
             if (liveState.showStats === undefined) liveState.showStats = false;
             if (liveState.fieldPenalties === undefined) liveState.fieldPenalties = [];
@@ -121,7 +129,9 @@ window.SmartSubs.LiveMode = (() => {
     }
 
     function startTimer() {
-        if (timerInterval) return;
+        // FUERZA LIMPIEZA: garantiza que solo exista UN interval a la vez
+        if (timerInterval) clearInterval(timerInterval);
+        
         liveState.status = 'playing';
         timerInterval = setInterval(() => {
             liveState.currentTime++;
@@ -140,9 +150,9 @@ window.SmartSubs.LiveMode = (() => {
             });
 
             // Update field penalties
-            liveState.fieldPenalties.forEach(pen => {
-                pen.elapsedTime++;
-            });
+            if (liveState.fieldPenalties) {
+                liveState.fieldPenalties.forEach(pen => pen.elapsedTime++);
+            }
             
             checkAlerts();
             updateTimerUI();
@@ -466,6 +476,11 @@ window.SmartSubs.LiveMode = (() => {
 
     function updateTimerUI() {
         const timerEl = document.getElementById('main-timer');
+        if (!timerEl) {
+            // El DOM fue reconstruido (ej. Firebase hosting), hacer render completo
+            render();
+            return;
+        }
         if (timerEl) {
             const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2, '0')}`;
             timerEl.textContent = formatTime(liveState.currentTime);
