@@ -631,22 +631,41 @@ h4 {
                 "alerts";
             height: calc(100dvh - 80px) !important;
             max-height: none !important;
-            overflow: hidden !important;
+            overflow-y: auto !important; /* Allow scrolling down ONLY for dashboard content like alerts */
             display: flex !important;
             flex-direction: column;
+            -webkit-overflow-scrolling: touch;
         }
         .field-area {
-            flex: 1 1 50%;
+            flex: 1 1 auto;
             min-height: 0 !important;
-            max-height: 60dvh;
+            max-height: none !important;
         }
         .bench-area {
-            flex: 0 0 auto;
-            min-height: 100px !important;
+            flex: 1 0 auto;
+            min-height: 80px !important;
+            padding: 5px 0 !important;
+        }
+        .bench-inner {
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            overflow: visible !important;
+            height: auto !important;
+            gap: 0.5rem !important;
+        }
+        .bench-row {
+            display: flex !important;
+            width: 100% !important;
+            justify-content: center !important;
+            flex-wrap: wrap !important;
+            gap: 0.25rem !important;
         }
         .alerts-area {
-            flex: 0 0 100px;
-            max-height: 100px !important;
+            flex: 1 0 auto; /* Allow alerts to take up their natural space if the dashboard scrolls */
+            max-height: none !important;
+            overflow: visible !important;
+            padding-bottom: 20px; /* Extra space to ensure the last suggestion isn't cut off */
         }
     }
     
@@ -741,6 +760,30 @@ h4 {
 
 .suggestion-box {
     line-height: 1.4;
+}
+
+[draggable="true"] {
+    -webkit-user-drag: element;
+}
+
+/* Player Dots in Live Mode */
+.dot {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.dot.selected {
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4), 0 0 20px var(--accent-primary) !important;
+    transform: scale(1.15);
+    z-index: 100;
+    animation: pulse-selected 1.5s infinite;
+}
+
+@keyframes pulse-selected {
+    0% { transform: scale(1.15); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4), 0 0 20px var(--accent-primary); }
+    50% { transform: scale(1.2); box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.2), 0 0 30px var(--accent-primary); }
+    100% { transform: scale(1.15); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4), 0 0 20px var(--accent-primary); }
 }
 
 [draggable="true"] {

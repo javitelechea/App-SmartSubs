@@ -25,6 +25,7 @@ window.SmartSubs.LiveMode = (() => {
     let timerInterval = null;
     let lastSuggestionCount = 0;
     let draggedId = null;
+    let selectedId = null;
 
     /**
      * Initialize Live Mode with current match data
@@ -332,12 +333,14 @@ window.SmartSubs.LiveMode = (() => {
                      ondragover="window.SmartSubs.LiveMode.handleDragOver(event)"
                      onclick="window.SmartSubs.LiveMode.showPlayerInfo('${p.id}')"
                  style="display:flex; flex-direction:column; align-items:center; cursor:grab; min-width:60px; opacity:${isBench ? '0.8' : '1'};">
-                <div class="dot bg-${color}" style="width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.3); border:2px solid ${p.isStarter ? 'var(--accent-warning)' : (isBench ? 'rgba(255,255,255,0.4)' : 'white')}; margin-bottom:4px; position:relative;">
+                <div class="dot bg-${color} ${selectedId === p.id ? 'selected' : ''}" style="width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.3); border:2px solid ${p.isStarter ? 'var(--accent-warning)' : (isBench ? 'rgba(255,255,255,0.4)' : 'white')}; margin-bottom:4px; position:relative;"
+                     onclick="event.stopPropagation(); window.SmartSubs.LiveMode.handlePlayerClick('${p.id}')">
                     ${p.number}
                     ${p.isStarter ? '<i class="fa-solid fa-star" style="position:absolute; top:-6px; right:-6px; color:var(--accent-warning); font-size:10px;"></i>' : ''}
                     ${p.isSuspended ? `<div style="position:absolute; bottom:-4px; right:-4px; width:12px; height:16px; background:${p.isSuspended === 'green' ? '#10b981' : '#f59e0b'}; border:1px solid white; border-radius:2px; box-shadow:0 1px 2px rgba(0,0,0,0.5);"></div>` : ''}
                 </div>
-                <div style="background:rgba(0,0,0,0.6); color:white; font-size:10px; padding:1px 4px; border-radius:3px; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center;">
+                <div onclick="event.stopPropagation(); window.SmartSubs.LiveMode.handlePlayerClick('${p.id}')" 
+                     style="background:rgba(0,0,0,0.6); color:white; font-size:10px; padding:1px 4px; border-radius:3px; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center;">
                     ${p.name.split(' ')[0]}
                 </div>
                 <div class="${isBench ? 'player-rest' : 'text-white'}" style="font-size:11px; font-weight:bold; font-family:monospace; margin-top:2px;">
@@ -430,8 +433,10 @@ window.SmartSubs.LiveMode = (() => {
                             ${benchLines.DEF.map(p => renderPlayerDot(p, getPositionColor(p.positionTag), true)).join('')}
                         </div>
                         <div class="bench-row" style="display:flex; flex-direction:row-reverse; justify-content:center; flex-wrap:wrap; gap:0.25rem; min-height:60px; position:relative;">
-                            <!-- Card Sources (First in row-reverse = Far Right) -->
-                            <div style="display:flex; gap:6px; margin-left:15px; border-left:1px solid rgba(255,255,255,0.1); padding-left:10px; align-items:center;">
+                            ${benchLines.GK.map(p => renderPlayerDot(p, getPositionColor(p.positionTag), true)).join('')}
+                            
+                            <!-- Card Sources (After GK in row-reverse sequence) -->
+                            <div style="display:flex; gap:6px; margin-right:15px; border-right:1px solid rgba(255,255,255,0.1); padding-right:10px; align-items:center;">
                                 <div class="card-source" draggable="true" ondragstart="window.SmartSubs.LiveMode.handleDragStart(event, 'green')"
                                      style="width:24px; height:32px; background:#10b981; border:2px solid white; border-radius:3px; cursor:grab; box-shadow:0 2px 4px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;" title="Tarjeta Verde (2m)">
                                      <span style="color:white; font-size:10px; font-weight:bold;">V</span>
@@ -441,8 +446,6 @@ window.SmartSubs.LiveMode = (() => {
                                      <span style="color:white; font-size:10px; font-weight:bold;">A</span>
                                 </div>
                             </div>
-                            
-                            ${benchLines.GK.map(p => renderPlayerDot(p, getPositionColor(p.positionTag), true)).join('')}
                         </div>
                     </div>
                 </div>
@@ -650,11 +653,33 @@ window.SmartSubs.LiveMode = (() => {
         render();
     }
 
-    function showPlayerInfo(playerId) {
-        const p = liveState.players.find(pl => pl.id === playerId);
-        if (!p) return;
-        const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
-        alert(`${p.name} (#${p.number})\nTotal: ${formatTime(p.totalPlayed)}`);
+    function handlePlayerClick(playerId) {
+        if (selectedId === playerId) {
+            selectedId = null;
+            render();
+            return;
+        }
+
+        if (!selectedId) {
+            selectedId = playerId;
+            render();
+        } else {
+            // We have a selection and a new click
+            const p1 = liveState.players.find(p => p.id === selectedId);
+            const p2 = liveState.players.find(p => p.id === playerId);
+
+            if (p1 && p2 && p1.isOnField !== p2.isOnField) {
+                // One on field, one on bench -> Swap
+                const offId = p1.isOnField ? p1.id : p2.id;
+                const inId = p1.isOnField ? p2.id : p1.id;
+                selectedId = null; // Clear BEFORE swap to ensure render doesn't show selection
+                swapPlayers(offId, inId);
+            } else {
+                // Both in same zone, just change selection
+                selectedId = playerId;
+                render();
+            }
+        }
     }
 
     function handleDragStart(e, cardType) { 
@@ -710,7 +735,7 @@ window.SmartSubs.LiveMode = (() => {
 
     return {
         init, render, renderBody, toggleTimer, handleDragStart, handleDrop, handleDragOver, handleDragEnd, 
-        finishQuarter, exitSession, syncPlan, executeSwap, exportToCSV, showPlayerInfo, toggleStats, sortStats,
+        finishQuarter, exitSession, syncPlan, executeSwap, exportToCSV, handlePlayerClick, toggleStats, sortStats,
         getState: () => liveState,
         exit: exitSession
     };
