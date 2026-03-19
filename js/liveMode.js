@@ -596,10 +596,6 @@ window.SmartSubs.LiveMode = (() => {
 
         return `
             <div class="stats-view" style="padding:1rem; max-width:800px; margin:0 auto; background:var(--bg-card); border-radius:12px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                    <h2 style="margin:0;"><i class="fa-solid fa-chart-bar"></i> Estadísticas</h2>
-                    <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.exportToCSV()"><i class="fa-solid fa-download"></i> CSV</button>
-                </div>
                 <div style="overflow-x:auto;">
                     <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
                         <thead>
@@ -630,8 +626,9 @@ window.SmartSubs.LiveMode = (() => {
                         </tbody>
                     </table>
                 </div>
-                <div style="margin-top:1rem; display:flex; justify-content:center; gap:1rem;">
+                <div style="margin-top:1rem; display:flex; justify-content:center; gap:1rem; align-items:center;">
                     <button class="btn btn-outline" onclick="window.SmartSubs.LiveMode.toggleStats(false)">Volver</button>
+                    <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.exportToCSV()" title="Descargar CSV"><i class="fa-solid fa-download"></i> CSV</button>
                     ${liveState.status === 'finished' ? `<button class="btn btn-success" onclick="window.SmartSubs.LiveMode.exportToCSV()">Exportar</button>` : ''}
                 </div>
             </div>

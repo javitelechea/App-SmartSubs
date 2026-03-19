@@ -77,26 +77,6 @@ body {
     gap: var(--spacing-4);
 }
 
-.nav-link {
-    color: var(--text-muted);
-    text-decoration: none;
-    font-weight: 500;
-    padding: var(--spacing-2) var(--spacing-3);
-    border-radius: var(--radius-md);
-    transition: all 0.2s;
-    cursor: pointer;
-}
-
-.nav-link:hover {
-    color: var(--text-main);
-    background-color: var(--bg-elevated);
-}
-
-.nav-link.active {
-    color: var(--accent-primary);
-    background-color: rgba(59, 130, 246, 0.1);
-}
-
 .main-content {
     flex: 1;
     padding: var(--spacing-6);
@@ -577,6 +557,26 @@ h4 {
     height: calc(100vh - 180px);
     overflow: hidden;
     padding: 0.5rem;
+}
+
+@media (max-width: 900px) {
+    .live-dashboard {
+        grid-template-columns: 1fr;
+        grid-template-areas: 
+            "field"
+            "bench"
+            "alerts";
+        height: auto;
+        overflow: visible;
+        min-height: calc(100vh - 120px);
+    }
+    .field-area {
+        min-height: 480px !important;
+    }
+    .bench-area {
+        min-height: 200px !important;
+        position: relative;
+    }
 }
 
 .field-area { 

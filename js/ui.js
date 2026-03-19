@@ -44,14 +44,14 @@ class UI {
                 
                 <div class="card mb-4 header-controls-container" style="padding: 0.75rem 1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border-color: var(--accent-primary);">
                     <div class="nav-tabs" style="display:flex; gap:0.25rem; border:none; margin:0; padding:0;">
-                        <button class="nav-link tab-btn ${this.currentRoute === 'players' ? 'active' : ''}" data-route="players" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.9rem;">
-                            <span class="tab-long">1. Vista de Equipo</span><span class="tab-short">1. Equipo</span>
+                        <button class="btn btn-sm ${this.currentRoute === 'players' ? 'btn-primary' : 'btn-outline'}" onclick="window.SmartSubs.UI.navigate('players')" title="Equipo">
+                            <i class="fa-solid fa-users"></i>
                         </button>
-                        <button class="nav-link tab-btn ${this.currentRoute === 'plan' ? 'active' : ''}" data-route="plan" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.9rem;">
-                            <span class="tab-long">2. Plan de Rotación</span><span class="tab-short">2. Plan</span>
+                        <button class="btn btn-sm ${this.currentRoute === 'plan' ? 'btn-primary' : 'btn-outline'}" onclick="window.SmartSubs.UI.navigate('plan')" title="Plan de Rotación">
+                            <i class="fa-solid fa-clipboard-list"></i>
                         </button>
-                        <button class="nav-link tab-btn ${this.currentRoute === 'live' ? 'active' : ''}" data-route="live" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.9rem;">
-                            <span class="tab-long">3. Partido en Vivo</span><span class="tab-short">3. Vivo</span>
+                        <button class="btn btn-sm ${this.currentRoute === 'live' ? 'btn-primary' : 'btn-outline'}" onclick="window.SmartSubs.UI.navigate('live')" title="Partido en Vivo">
+                            <i class="fa-solid fa-tower-broadcast"></i>
                         </button>
                     </div>
                     <div id="active-view-controls" class="active-view-controls" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
@@ -193,7 +193,7 @@ class UI {
         const genBtnDisabled = hasBlockingConflict ? 'disabled' : '';
 
         return `
-            <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:0.25rem; flex-wrap:wrap;">
                 <div style="display:flex; align-items:center; gap:0.5rem;" title="Períodos a jugar">
                     <span class="text-sm text-muted">Per.:</span>
                     <input type="number" id="cfg-periods" class="form-control" value="${config.periodsCount || 4}" min="1" max="10" style="width:50px; text-align:center; padding:4px;">
@@ -202,8 +202,8 @@ class UI {
                     <span class="text-sm text-muted">Min:</span>
                     <input type="number" id="cfg-mins" class="form-control" value="${config.minsPerPeriod || 15}" min="5" max="45" style="width:50px; text-align:center; padding:4px;">
                 </div>
-                <button class="btn btn-warning btn-sm" id="btn-reset-mins" title="Restablecer ajustes"><i class="fa-solid fa-rotate-left"></i> Restablecer</button>
-                <button class="btn btn-success btn-sm" id="auto-gen-from-team" ${genBtnDisabled}><i class="fa-solid fa-wand-magic-sparkles"></i> Generar Plan</button>
+                <button class="btn btn-warning btn-sm" onclick="window.SmartSubs.UI.handleResetMins()" title="Restablecer ajustes"><i class="fa-solid fa-rotate-left"></i></button>
+                <button class="btn btn-success btn-sm" id="auto-gen-from-team" ${genBtnDisabled} onclick="window.SmartSubs.UI.handleAutoGenPlan()" title="Generar Plan"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
             </div>
         `;
     }
@@ -751,7 +751,7 @@ class UI {
                     <i class="fa-solid fa-${liveState.status === 'playing' ? 'pause' : 'play'}"></i>
                 </button>
                 <button class="btn btn-danger btn-sm" onclick="window.SmartSubs.LiveMode.finishQuarter()" title="${isLastQuarter ? 'Finalizar el partido y ver estadísticas' : 'Finalizar cuarto y reiniciar reloj'}">
-                    <i class="fa-solid fa-flag-checkered"></i>
+                    <i class="fa-solid fa-${isLastQuarter ? 'flag-checkered' : 'stop'}"></i>
                 </button>
                 <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.syncPlan()" title="Actualizar plan de referencia (sin resetear cronómetros)">
                     <i class="fa-solid fa-sync"></i>
@@ -980,19 +980,79 @@ class UI {
         if (this.currentRoute === 'plan') this.attachPlanEvents();
     }
 
-    attachPlayersEvents() {
-        const resetBtn = document.getElementById('btn-reset-mins');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                if (!confirm("¿Seguro que quieres borrar todos los ajustes manuales de prioridad y volver a asignar prioridad máxima a las titulares y 0 a las suplentes?")) return;
-                const match = window.SmartSubs.store.getCurrentMatch();
-                match.players.forEach(p => {
-                    p.playTarget = p.isStarter ? 10 : 0;
-                });
-                window.SmartSubs.store.saveCurrentMatch();
-                this.render();
-            });
+    handleResetMins() {
+        if (!confirm("¿Seguro que quieres borrar todos los ajustes manuales de prioridad y volver a asignar prioridad máxima a las titulares y 0 a las suplentes?")) return;
+        const match = window.SmartSubs.store.getCurrentMatch();
+        match.players.forEach(p => {
+            p.playTarget = p.isStarter ? 10 : 0;
+        });
+        window.SmartSubs.store.saveCurrentMatch();
+        this.render();
+    }
+
+    handleAutoGenPlan() {
+        const autoGenBtn = document.getElementById('auto-gen-from-team');
+        if (autoGenBtn && autoGenBtn.hasAttribute('disabled')) return;
+
+        // Before generating, we force a save of the current DOM state 
+        // to ensure any pending inputs that didn't fire due to debouncing are saved.
+        const match = window.SmartSubs.store.getCurrentMatch();
+        document.querySelectorAll('.player-row').forEach(row => {
+            const id = row.dataset.id;
+            const pIdx = match.players.findIndex(p => p.id === id);
+            if (pIdx > -1) {
+                const p = match.players[pIdx];
+                p.name = row.querySelector('.p-name').value;
+                p.number = row.querySelector('.p-num').value;
+                p.positionTag = row.querySelector('.p-pos').value;
+                p.playTarget = parseInt(row.querySelector('.p-target').value, 10);
+                p.pcAttackRoles = Array.from(row.querySelectorAll('.p-pca:checked')).map(cb => cb.value);
+                p.pcDefenseRoles = Array.from(row.querySelectorAll('.p-pcd:checked')).map(cb => cb.value);
+                p.isActive = row.querySelector('.p-active').checked;
+                p.isStarter = row.querySelector('.p-starter').checked;
+            }
+        });
+        window.SmartSubs.store.saveCurrentMatch();
+
+        // Save configuration directly from inputs
+        const periods = parseInt(document.getElementById('cfg-periods').value, 10) || 4;
+        const minPer = parseInt(document.getElementById('cfg-mins').value, 10) || 15;
+        match.config.periodsCount = periods;
+        match.config.minsPerPeriod = minPer;
+        match.config.totalMinutes = periods * minPer;
+
+        // Derive formation dynamically from starters
+        const starters = match.players.filter(p => p.isActive !== false && p.isStarter);
+        const reqPos = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
+        starters.forEach(s => {
+            if (s.positionTag === 'GK') reqPos.GK++;
+            else if (s.positionTag === 'DEF') reqPos.DEF++;
+            else if (s.positionTag === 'MID') reqPos.MID++;
+            else if (s.positionTag === 'FWD') reqPos.FWD++;
+        });
+        match.config.formation = `${reqPos.DEF}-${reqPos.MID}-${reqPos.FWD}`;
+        match.config.onFieldCount = starters.length;
+
+        window.SmartSubs.store.saveCurrentMatch();
+
+        const planner = new window.SmartSubs.Planner(window.SmartSubs.store);
+        try {
+            const plan = planner.generatePlan();
+            if (plan) {
+                window.SmartSubs.store.updatePlan(plan);
+                this.navigate('plan');
+            } else {
+                alert("El algoritmo no pudo generar el plan. Revisa la consola o asegúrate de tener 11 jugadoras en cancha.");
+            }
+        } catch (e) {
+            console.error("Error generando plan:", e);
+            alert("Hubo un error calculando el plan matemático: " + e.message);
         }
+    }
+
+    attachPlayersEvents() {
+        // The 'btn-reset-mins' and 'auto-gen-from-team' buttons should now call handleResetMins() and handleAutoGenPlan() via onclick.
+        // The event listeners for these buttons are removed from here.
 
         const tbody = document.getElementById('players-tbody');
         if (!tbody) return;
