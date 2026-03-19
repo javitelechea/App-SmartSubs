@@ -747,18 +747,17 @@ class UI {
                 <div id="main-timer" style="font-size:1.5rem; font-family:monospace; font-weight:bold; background:black; color:lime; padding:0 0.5rem; border-radius:4px; border:2px solid #333; line-height:1.2;">
                     ${formatTime(liveState.currentTime)}
                 </div>
-                <button class="btn ${liveState.status === 'playing' ? 'btn-warning' : 'btn-success'} btn-sm" onclick="window.SmartSubs.LiveMode.toggleTimer()">
-                    <i class="fa-solid fa-${liveState.status === 'playing' ? 'pause' : 'play'}"></i> 
-                    <span class="btn-text">${liveState.status === 'playing' ? 'Pausar' : 'Empezar'}</span>
+                <button class="btn ${liveState.status === 'playing' ? 'btn-warning' : 'btn-success'} btn-sm" onclick="window.SmartSubs.LiveMode.toggleTimer()" title="${liveState.status === 'playing' ? 'Pausar' : 'Empezar'}">
+                    <i class="fa-solid fa-${liveState.status === 'playing' ? 'pause' : 'play'}"></i>
                 </button>
                 <button class="btn btn-danger btn-sm" onclick="window.SmartSubs.LiveMode.finishQuarter()" title="${isLastQuarter ? 'Finalizar el partido y ver estadísticas' : 'Finalizar cuarto y reiniciar reloj'}">
-                    <i class="fa-solid fa-flag-checkered"></i> <span class="btn-text">${isLastQuarter ? 'Fin Partido' : 'Fin Cuarto'}</span>
+                    <i class="fa-solid fa-flag-checkered"></i>
                 </button>
                 <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.syncPlan()" title="Actualizar plan de referencia (sin resetear cronómetros)">
-                    <i class="fa-solid fa-sync"></i> <span class="btn-text">Sincronizar</span>
+                    <i class="fa-solid fa-sync"></i>
                 </button>
                 <button class="btn ${liveState.showStats ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="window.SmartSubs.LiveMode.toggleStats()" title="Ver estadísticas en vivo">
-                    <i class="fa-solid fa-chart-simple"></i> <span class="btn-text">Estadísticas</span>
+                    <i class="fa-solid fa-chart-simple"></i>
                 </button>
                 <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.exitSession()" title="Reiniciar sesión completa"><i class="fa-solid fa-redo"></i></button>
             </div>

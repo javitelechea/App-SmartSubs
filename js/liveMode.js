@@ -45,8 +45,6 @@ window.SmartSubs.LiveMode = (() => {
         const saved = loadSession();
         if (saved && saved.matchId === match.id) {
             liveState = saved;
-            // Si estaba jugando, volver a estado paused al reiniciar (evitar auto-play)
-            if (liveState.status === 'playing') liveState.status = 'paused';
             // Migration: ensure new fields exist in old sessions
             if (liveState.showStats === undefined) liveState.showStats = false;
             if (liveState.fieldPenalties === undefined) liveState.fieldPenalties = [];
@@ -56,6 +54,10 @@ window.SmartSubs.LiveMode = (() => {
                     if (!p.positionTag) p.positionTag = p.position || 'MID';
                     if (!p.playedPerQuarter) p.playedPerQuarter = new Array(totalQs).fill(0);
                 });
+            }
+            // Si estaba jugando al salir, retomar el timer automáticamente
+            if (liveState.status === 'playing') {
+                startTimer();
             }
         } else {
             // New session
