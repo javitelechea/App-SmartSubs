@@ -403,16 +403,16 @@ window.SmartSubs.LiveMode = (() => {
                     <div style="border: 2px solid white; border-radius: 0 0 50% 50%; width: 35%; height: 12%; position:absolute; top:0; left:32.5%; z-index:0; border-top:none;"></div>
                     <div style="border: 2px solid white; border-radius: 50% 50% 0 0; width: 35%; height: 12%; position:absolute; bottom:0; left:32.5%; z-index:0; border-bottom:none;"></div>
 
-                    <div style="display:flex; flex-direction:row-reverse; justify-content:space-around; z-index:1; padding:0 20px;">
+                    <div class="field-row" style="display:flex; flex-direction:row-reverse; justify-content:space-around; z-index:1;">
                         ${renderItems(fieldLines.FWD)}
                     </div>
-                    <div style="display:flex; flex-direction:row-reverse; justify-content:space-around; z-index:1; padding:0 10px;">
+                    <div class="field-row" style="display:flex; flex-direction:row-reverse; justify-content:space-around; z-index:1;">
                         ${renderItems(fieldLines.MID)}
                     </div>
-                    <div style="display:flex; flex-direction:row-reverse; justify-content:space-around; z-index:1; padding:0 20px;">
+                    <div class="field-row" style="display:flex; flex-direction:row-reverse; justify-content:space-around; z-index:1;">
                         ${renderItems(fieldLines.DEF)}
                     </div>
-                    <div style="display:flex; flex-direction:row-reverse; justify-content:center; z-index:1;">
+                    <div class="field-row" style="display:flex; flex-direction:row-reverse; justify-content:center; z-index:1;">
                         ${renderItems(fieldLines.GK)}
                     </div>
                 </div>
