@@ -17,6 +17,20 @@ class UI {
                 return;
             }
 
+            let viewControls = '';
+            let viewBody = '';
+
+            if (this.currentRoute === 'players') {
+                viewControls = this.renderPlayerControls(match);
+                viewBody = this.renderPlayersBody(match);
+            } else if (this.currentRoute === 'plan') {
+                viewControls = this.renderPlanControls(match);
+                viewBody = this.renderPlanBody(match);
+            } else if (this.currentRoute === 'live') {
+                viewControls = this.renderLiveControls();
+                viewBody = window.SmartSubs.LiveMode.renderBody();
+            }
+
             content = `
                 <div class="flex-between mb-4" style="padding-bottom:1rem; border-bottom:1px solid var(--border-color);">
                     <div style="display:flex; align-items:center; gap: 1rem;">
@@ -28,18 +42,25 @@ class UI {
                     </div>
                 </div>
                 
-                <div class="card mb-4" style="padding: 0.75rem 1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border-color: var(--accent-primary);">
+                <div class="card mb-4 header-controls-container" style="padding: 0.75rem 1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border-color: var(--accent-primary);">
                     <div class="nav-tabs" style="display:flex; gap:0.25rem; border:none; margin:0; padding:0;">
-                        <button class="nav-link tab-btn ${this.currentRoute === 'players' ? 'active' : ''}" data-route="players" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.9rem;">1. Vista de Equipo</button>
-                        <button class="nav-link tab-btn ${this.currentRoute === 'plan' ? 'active' : ''}" data-route="plan" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.9rem;">2. Plan de Rotación</button>
+                        <button class="nav-link tab-btn ${this.currentRoute === 'players' ? 'active' : ''}" data-route="players" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.9rem;">
+                            <span class="tab-long">1. Vista de Equipo</span><span class="tab-short">1. Equipo</span>
+                        </button>
+                        <button class="nav-link tab-btn ${this.currentRoute === 'plan' ? 'active' : ''}" data-route="plan" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.9rem;">
+                            <span class="tab-long">2. Plan de Rotación</span><span class="tab-short">2. Plan</span>
+                        </button>
+                        <button class="nav-link tab-btn ${this.currentRoute === 'live' ? 'active' : ''}" data-route="live" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.9rem;">
+                            <span class="tab-long">3. Partido en Vivo</span><span class="tab-short">3. Vivo</span>
+                        </button>
                     </div>
-                    <div id="active-view-controls" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
-                        ${this.currentRoute === 'players' ? this.renderPlayerControls(match) : this.renderPlanControls(match)}
+                    <div id="active-view-controls" class="active-view-controls" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                        ${viewControls}
                     </div>
                 </div>
                 
                 <div class="view-content" style="margin-top:1rem;">
-                    ${this.currentRoute === 'players' ? this.renderPlayersBody(match) : this.renderPlanBody(match)}
+                    ${viewBody}
                 </div>
             `;
         }
@@ -697,6 +718,53 @@ class UI {
         `;
     }
 
+    renderLiveControls() {
+        const liveState = window.SmartSubs.LiveMode.getState();
+        if (liveState.status === 'finished') {
+            return `
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <span class="badge badge-success" style="font-size:0.8rem; font-weight:bold;"><i class="fa-solid fa-check-circle"></i> PARTIDO FINALIZADO</span>
+                    <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.exitSession()" title="Reiniciar sesión completa"><i class="fa-solid fa-redo"></i> Nueva Sesión</button>
+                </div>
+            `;
+        }
+
+        const formatTime = (s) => {
+            const m = Math.floor(s / 60);
+            const sec = s % 60;
+            return `${m}:${sec.toString().padStart(2, '0')}`;
+        };
+
+        const totalQuarters = (liveState.config && liveState.config.periodsCount) ? liveState.config.periodsCount : 4;
+        const isLastQuarter = liveState.currentQuarter >= totalQuarters;
+
+        return `
+            <div style="display:flex; align-items:center; gap:0.25rem;">
+                <span class="badge badge-gray" style="font-size:0.8rem; font-weight:bold;">
+                    <span class="tab-long">CUARTO ${liveState.currentQuarter || 1} / ${totalQuarters}</span>
+                    <span class="tab-short">${liveState.currentQuarter || 1}Q</span>
+                </span>
+                <div id="main-timer" style="font-size:1.5rem; font-family:monospace; font-weight:bold; background:black; color:lime; padding:0 0.5rem; border-radius:4px; border:2px solid #333; line-height:1.2;">
+                    ${formatTime(liveState.currentTime)}
+                </div>
+                <button class="btn ${liveState.status === 'playing' ? 'btn-warning' : 'btn-success'} btn-sm" onclick="window.SmartSubs.LiveMode.toggleTimer()">
+                    <i class="fa-solid fa-${liveState.status === 'playing' ? 'pause' : 'play'}"></i> 
+                    <span class="btn-text">${liveState.status === 'playing' ? 'Pausar' : 'Empezar'}</span>
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="window.SmartSubs.LiveMode.finishQuarter()" title="${isLastQuarter ? 'Finalizar el partido y ver estadísticas' : 'Finalizar cuarto y reiniciar reloj'}">
+                    <i class="fa-solid fa-flag-checkered"></i> <span class="btn-text">${isLastQuarter ? 'Fin Partido' : 'Fin Cuarto'}</span>
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.syncPlan()" title="Actualizar plan de referencia (sin resetear cronómetros)">
+                    <i class="fa-solid fa-sync"></i> <span class="btn-text">Sincronizar</span>
+                </button>
+                <button class="btn ${liveState.showStats ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="window.SmartSubs.LiveMode.toggleStats()" title="Ver estadísticas en vivo">
+                    <i class="fa-solid fa-chart-simple"></i> <span class="btn-text">Estadísticas</span>
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.exitSession()" title="Reiniciar sesión completa"><i class="fa-solid fa-redo"></i></button>
+            </div>
+        `;
+    }
+
     renderPlanBody(match) {
         const plan = match.plan;
 
@@ -1174,6 +1242,7 @@ class UI {
             });
         });
 
+
         document.getElementById('btn-export')?.addEventListener('click', () => {
             const match = window.SmartSubs.store.getCurrentMatch();
             if (!match || !match.plan || !match.plan.blocks) return;
@@ -1256,8 +1325,15 @@ class UI {
     }
 
     navigate(route) {
-        this.currentRoute = route;
-        this.render();
+        if (route === 'live') {
+            const match = window.SmartSubs.store.getCurrentMatch();
+            this.currentRoute = 'live'; // SET FIRST
+            window.SmartSubs.LiveMode.init(match);
+            window.SmartSubs.LiveMode.toggleStats(false);
+        } else {
+            this.currentRoute = route;
+        }
+        this.render(); // ALWAYS RENDER
     }
 }
 

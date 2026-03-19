@@ -523,3 +523,170 @@ h4 {
 
 .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 .table-sm th, .table-sm td { padding: 4px 6px !important; }
+
+/* Live Mode Styles */
+.live-mode-container {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+}
+
+.live-player-card {
+    transition: transform 0.1s, box-shadow 0.1s;
+    user-select: none;
+}
+
+.live-player-card:active {
+    cursor: grabbing;
+}
+
+.live-player-card.bench {
+    border-left: 4px solid var(--accent-primary);
+}
+
+.live-player-card.field {
+    border-left: 4px solid var(--accent-success);
+}
+
+.live-column {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+}
+
+#main-timer {
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+}
+
+/* Match Suggestion Item Hover */
+.suggestion-item:hover {
+    background: rgba(255,165,0,0.1) !important;
+}
+
+/* --- Responsive Header & Tabs --- */
+.tab-short {
+    display: none;
+}
+
+/* --- Live Dashboard Layout --- */
+.live-dashboard {
+    display: grid;
+    grid-template-columns: 1fr 280px 280px;
+    grid-template-areas: "field bench alerts";
+    gap: 0.75rem;
+    height: calc(100vh - 180px);
+    overflow: hidden;
+    padding: 0.5rem;
+}
+
+.field-area { 
+    grid-area: field; 
+    background: #2e7d32; 
+    border: 4px solid white; 
+    border-radius: 12px; 
+    position: relative; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: space-around; 
+    padding: 20px 0; 
+    overflow: hidden; 
+    box-shadow: inset 0 0 100px rgba(0,0,0,0.2); 
+    min-height: 380px;
+}
+
+.bench-area { 
+    grid-area: bench; 
+    display: flex; 
+    flex-direction: column; 
+    background: rgba(0,0,0,0.05); 
+    border-radius: 12px; 
+    border: 2px dashed rgba(255,255,255,0.2); 
+    justify-content: space-around; 
+    padding: 20px 0; 
+    position: relative; 
+}
+
+.alerts-area { 
+    grid-area: alerts; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 0.5rem; 
+    overflow-y: auto; 
+    padding-right: 0.25rem; 
+}
+
+@media (max-width: 1024px) {
+    .live-dashboard {
+        grid-template-columns: 1fr 280px;
+        grid-template-areas: 
+            "field alerts"
+            "bench alerts";
+        height: auto;
+        max-height: calc(100vh - 160px);
+        overflow-y: auto;
+    }
+    .header-controls-container {
+        padding: 0.5rem !important;
+        gap: 0.5rem !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+    }
+    .active-view-controls {
+        gap: 0.25rem !important;
+        flex-wrap: nowrap !important;
+    }
+    .tab-long {
+        display: none;
+    }
+    .tab-short {
+        display: inline;
+    }
+    .btn-text {
+        display: none;
+    }
+    .badge {
+        font-size: 0.7rem !important;
+        padding: 2px 4px !important;
+        white-space: nowrap;
+    }
+    #main-timer {
+        font-size: 1.2rem !important;
+        padding: 0 0.25rem !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .live-dashboard {
+        grid-template-columns: 1fr;
+        grid-template-areas: 
+            "field"
+            "bench"
+            "alerts";
+    }
+}
+
+.alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--accent-danger);
+    color: #f87171;
+}
+
+.alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid var(--accent-warning);
+    color: #fbbf24;
+}
+
+.alert-info {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid var(--accent-primary);
+    color: #60a5fa;
+}
+
+.suggestion-box {
+    line-height: 1.4;
+}
+
+[draggable="true"] {
+    -webkit-user-drag: element;
+}
