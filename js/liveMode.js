@@ -514,8 +514,15 @@ window.SmartSubs.LiveMode = (() => {
 
     function renderSuggestions() {
         if (!originSnapshot || !originSnapshot.plan) return '<p class="text-muted">Sin plan.</p>';
-        const blockIdx = Math.floor(liveState.currentTime / 60);
-        const currentBlock = originSnapshot.plan.blocks[blockIdx];
+        
+        // Calcular el minuto actual (acumulado de todos los cuartos)
+        const currentMinute = Math.floor(liveState.currentTime / 60);
+        
+        // Buscar el bloque que cubre el minuto actual por rango (no por índice)
+        const currentBlock = originSnapshot.plan.blocks.find(b => 
+            currentMinute >= b.startMinute && currentMinute < b.endMinute
+        );
+        
         if (!currentBlock) return '<p class="text-muted">Fin del plan.</p>';
         const planIds = currentBlock.onFieldPlayerIds;
         const liveIds = liveState.players.filter(p => p.isOnField).map(p => p.id);
