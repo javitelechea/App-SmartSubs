@@ -31,22 +31,14 @@ window.SmartSubs.LiveMode = (() => {
      */
     function init(match) {
         if (!match) return;
-        
-        // CRITICAL: Siempre limpiar interval al iniciar para evitar múltiples timers
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        }
-        
-        // 1. Create the immutable origin snapshot
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
         originSnapshot = window.SmartSubs.Utils.deepClone(match);
-        
-        // 2. Try to load existing live session for this match
         const saved = loadSession();
         if (saved && saved.matchId === match.id) {
             liveState = saved;
-            // Migration: ensure new fields exist in old sessions
             if (liveState.showStats === undefined) liveState.showStats = false;
+            if (liveState.sortKey === undefined) liveState.sortKey = 'totalPlayed';
+            if (liveState.sortOrder === undefined) liveState.sortOrder = 'desc';
             if (liveState.fieldPenalties === undefined) liveState.fieldPenalties = [];
             if (liveState.players) {
                 const totalQs = (match.config && match.config.periodsCount) ? match.config.periodsCount : 4;
@@ -55,39 +47,36 @@ window.SmartSubs.LiveMode = (() => {
                     if (!p.playedPerQuarter) p.playedPerQuarter = new Array(totalQs).fill(0);
                 });
             }
-            // Si estaba jugando al salir, retomar el timer automáticamente
-            if (liveState.status === 'playing') {
-                startTimer();
-            }
+            if (liveState.status === 'playing') { startTimer(); }
         } else {
-            // New session
             resetSession(match);
         }
-        
         lastSuggestionCount = 0;
         render();
     }
 
     function resetSession(match) {
+        const totalQs = (match.config && match.config.periodsCount) ? match.config.periodsCount : 4;
         liveState = {
             matchId: match.id,
+            config: window.SmartSubs.Utils.deepClone(match.config),
             status: 'stopped',
             currentTime: 0,
             currentQuarter: 1,
-            showStats: false,
+            fieldPenalties: [],
             players: match.players.map(p => {
                 const isOnField = p.isStarter && p.isActive !== false;
                 const posTag = p.positionTag || p.position || 'MID'; 
                 return {
                     id: p.id,
                     name: p.name,
-                    number: p.number,
+                    number: p.number || '?',
                     positionTag: posTag,
                     currentStint: 0,
                     totalPlayed: 0,
                     totalEntries: isOnField ? 1 : 0,
                     totalExits: 0,
-                    playedPerQuarter: new Array((match.config && match.config.periodsCount) ? match.config.periodsCount : 4).fill(0),
+                    playedPerQuarter: new Array(totalQs).fill(0),
                     isStarter: p.isStarter,
                     isOnField: isOnField,
                     roles: [...(p.pcAttackRoles || []), ...(p.pcDefenseRoles || [])]
@@ -95,8 +84,9 @@ window.SmartSubs.LiveMode = (() => {
             }),
             history: [],
             alerts: [],
-            fieldPenalties: [],
-            config: window.SmartSubs.Utils.deepClone(match.config)
+            showStats: false,
+            sortKey: 'totalPlayed',
+            sortOrder: 'desc'
         };
         saveSession();
     }
@@ -140,14 +130,16 @@ window.SmartSubs.LiveMode = (() => {
             
             // Update player timers
             liveState.players.forEach(p => {
-                p.currentStint++;
                 if (p.isOnField) {
-                    p.totalPlayed++;
-                    if (!p.playedPerQuarter) {
-                        const totalQs = (liveState.config && liveState.config.periodsCount) ? liveState.config.periodsCount : 4;
-                        p.playedPerQuarter = new Array(totalQs).fill(0);
+                    if (!p.isSuspended) {
+                        p.totalPlayed++;
+                        if (!p.playedPerQuarter) {
+                            const totalQs = (liveState.config && liveState.config.periodsCount) ? liveState.config.periodsCount : 4;
+                            p.playedPerQuarter = new Array(totalQs).fill(0);
+                        }
+                        p.playedPerQuarter[liveState.currentQuarter - 1] = (p.playedPerQuarter[liveState.currentQuarter - 1] || 0) + 1;
                     }
-                    p.playedPerQuarter[liveState.currentQuarter - 1] = (p.playedPerQuarter[liveState.currentQuarter - 1] || 0) + 1;
+                    p.currentStint++;
                 }
             });
 
@@ -427,17 +419,17 @@ window.SmartSubs.LiveMode = (() => {
 
                 <div class="bench-area">
                     <h4 style="position:absolute; top:4px; left:50%; transform:translateX(-50%); font-size:0.6rem; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:1px; font-weight:bold;">Suplentes</h4>
-                    <div style="display:flex; flex-direction:column; justify-content:space-around; height:100%;">
-                        <div style="display:flex; flex-direction:row-reverse; justify-content:center; flex-wrap:wrap; gap:0.25rem; min-height:60px;">
+                    <div class="bench-inner" style="display:flex; flex-direction:column; justify-content:space-around; height:100%;">
+                        <div class="bench-row" style="display:flex; flex-direction:row-reverse; justify-content:center; flex-wrap:wrap; gap:0.25rem; min-height:60px;">
                             ${benchLines.FWD.map(p => renderPlayerDot(p, getPositionColor(p.positionTag), true)).join('')}
                         </div>
-                        <div style="display:flex; flex-direction:row-reverse; justify-content:center; flex-wrap:wrap; gap:0.25rem; min-height:60px;">
+                        <div class="bench-row" style="display:flex; flex-direction:row-reverse; justify-content:center; flex-wrap:wrap; gap:0.25rem; min-height:60px;">
                             ${benchLines.MID.map(p => renderPlayerDot(p, getPositionColor(p.positionTag), true)).join('')}
                         </div>
-                        <div style="display:flex; flex-direction:row-reverse; justify-content:center; flex-wrap:wrap; gap:0.25rem; min-height:60px;">
+                        <div class="bench-row" style="display:flex; flex-direction:row-reverse; justify-content:center; flex-wrap:wrap; gap:0.25rem; min-height:60px;">
                             ${benchLines.DEF.map(p => renderPlayerDot(p, getPositionColor(p.positionTag), true)).join('')}
                         </div>
-                        <div style="display:flex; flex-direction:row-reverse; justify-content:center; flex-wrap:wrap; gap:0.25rem; min-height:60px; position:relative;">
+                        <div class="bench-row" style="display:flex; flex-direction:row-reverse; justify-content:center; flex-wrap:wrap; gap:0.25rem; min-height:60px; position:relative;">
                             <!-- Card Sources (First in row-reverse = Far Right) -->
                             <div style="display:flex; gap:6px; margin-left:15px; border-left:1px solid rgba(255,255,255,0.1); padding-left:10px; align-items:center;">
                                 <div class="card-source" draggable="true" ondragstart="window.SmartSubs.LiveMode.handleDragStart(event, 'green')"
@@ -449,7 +441,7 @@ window.SmartSubs.LiveMode = (() => {
                                      <span style="color:white; font-size:10px; font-weight:bold;">A</span>
                                 </div>
                             </div>
-
+                            
                             ${benchLines.GK.map(p => renderPlayerDot(p, getPositionColor(p.positionTag), true)).join('')}
                         </div>
                     </div>
@@ -516,10 +508,10 @@ window.SmartSubs.LiveMode = (() => {
     function renderSuggestions() {
         if (!originSnapshot || !originSnapshot.plan) return '<p class="text-muted">Sin plan.</p>';
         
-        // Calcular el minuto actual (acumulado de todos los cuartos)
-        const currentMinute = Math.floor(liveState.currentTime / 60);
+        const quarterDuration = (liveState.config && liveState.config.quarterDuration) ? liveState.config.quarterDuration : 10;
+        const totalElapsed = ((liveState.currentQuarter - 1) * quarterDuration * 60) + liveState.currentTime;
+        const currentMinute = Math.floor(totalElapsed / 60);
         
-        // Buscar el bloque que cubre el minuto actual por rango (no por índice)
         const currentBlock = originSnapshot.plan.blocks.find(b => 
             currentMinute >= b.startMinute && currentMinute < b.endMinute
         );
@@ -561,15 +553,80 @@ window.SmartSubs.LiveMode = (() => {
     }
 
     function renderStatsView(formatTime) {
-        const sorted = [...liveState.players].sort((a,b) => b.totalPlayed - a.totalPlayed);
+        const numQuarters = (liveState.config && liveState.config.periodsCount) ? liveState.config.periodsCount : 4;
+        const sortKey = liveState.sortKey || 'totalPlayed';
+        const sortOrder = liveState.sortOrder || 'desc';
+
+        const sorted = [...liveState.players].sort((a, b) => {
+            let valA, valB;
+            const posOrder = { 'GK': 1, 'DEF': 2, 'MID': 3, 'FWD': 4 };
+
+            if (sortKey === 'positionTag') {
+                valA = posOrder[a.positionTag] || 99;
+                valB = posOrder[b.positionTag] || 99;
+            } else if (sortKey === 'name') {
+                valA = a.name.toLowerCase();
+                valB = b.name.toLowerCase();
+            } else if (sortKey.startsWith('q')) {
+                const qIdx = parseInt(sortKey.substring(1));
+                valA = (a.playedPerQuarter && a.playedPerQuarter[qIdx]) ? a.playedPerQuarter[qIdx] : 0;
+                valB = (b.playedPerQuarter && b.playedPerQuarter[qIdx]) ? b.playedPerQuarter[qIdx] : 0;
+            } else {
+                valA = a[sortKey] || 0;
+                valB = b[sortKey] || 0;
+            }
+            
+            if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+            if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        const getSortIcon = (key) => {
+            if (sortKey !== key) return '<i class="fa-solid fa-sort" style="opacity:0.2; font-size:0.7rem; margin-left:4px;"></i>';
+            return sortOrder === 'asc' 
+                ? '<i class="fa-solid fa-sort-up" style="font-size:0.7rem; margin-left:4px; color:var(--accent-primary);"></i>' 
+                : '<i class="fa-solid fa-sort-down" style="font-size:0.7rem; margin-left:4px; color:var(--accent-primary);"></i>';
+        };
+
+        let qHeaders = '';
+        for (let i = 1; i <= numQuarters; i++) {
+            const key = `q${i-1}`;
+            qHeaders += `<th onclick="window.SmartSubs.LiveMode.sortStats('${key}')" style="text-align:center; cursor:pointer; user-select:none; padding:8px;">Q${i}${getSortIcon(key)}</th>`;
+        }
+
         return `
             <div class="stats-view" style="padding:1rem; max-width:800px; margin:0 auto; background:var(--bg-card); border-radius:12px;">
-                <h2 style="text-align:center;"><i class="fa-solid fa-chart-bar"></i> Estadísticas</h2>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h2 style="margin:0;"><i class="fa-solid fa-chart-bar"></i> Estadísticas</h2>
+                    <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.exportToCSV()"><i class="fa-solid fa-download"></i> CSV</button>
+                </div>
                 <div style="overflow-x:auto;">
-                    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-                        <thead><tr style="border-bottom:2px solid var(--border-color);"><th>#</th><th>Nombre</th><th>Pos</th><th>Total</th></tr></thead>
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                        <thead>
+                            <tr style="border-bottom:2px solid var(--border-color); text-align:left;">
+                                <th onclick="window.SmartSubs.LiveMode.sortStats('number')" style="padding:8px; cursor:pointer; user-select:none;">#${getSortIcon('number')}</th>
+                                <th onclick="window.SmartSubs.LiveMode.sortStats('name')" style="padding:8px; cursor:pointer; user-select:none;">Nombre${getSortIcon('name')}</th>
+                                <th onclick="window.SmartSubs.LiveMode.sortStats('positionTag')" style="padding:8px; cursor:pointer; user-select:none;">Pos${getSortIcon('positionTag')}</th>
+                                ${qHeaders}
+                                <th onclick="window.SmartSubs.LiveMode.sortStats('totalPlayed')" style="padding:8px; text-align:right; cursor:pointer; user-select:none;">Total${getSortIcon('totalPlayed')}</th>
+                            </tr>
+                        </thead>
                         <tbody>
-                            ${sorted.map(p => `<tr style="border-bottom:1px solid var(--border-color);"><td>${p.number}</td><td>${p.name}</td><td>${p.positionTag}</td><td>${formatTime(p.totalPlayed)}</td></tr>`).join('')}
+                            ${sorted.map(p => {
+                                let qCells = '';
+                                for (let i = 0; i < numQuarters; i++) {
+                                    const qTime = (p.playedPerQuarter && p.playedPerQuarter[i]) ? p.playedPerQuarter[i] : 0;
+                                    qCells += `<td style="padding:8px; text-align:center; color:rgba(255,255,255,0.7); font-family:monospace;">${formatTime(qTime)}</td>`;
+                                }
+                                return `
+                                    <tr style="border-bottom:1px solid var(--border-color);">
+                                        <td style="padding:8px;">${p.number}</td>
+                                        <td style="padding:8px; font-weight:bold;">${p.name}</td>
+                                        <td style="padding:8px;"><span class="badge badge-gray" style="font-size:10px;">${p.positionTag}</span></td>
+                                        ${qCells}
+                                        <td style="padding:8px; text-align:right; font-weight:bold; font-family:monospace;">${formatTime(p.totalPlayed)}</td>
+                                    </tr>`;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -577,7 +634,18 @@ window.SmartSubs.LiveMode = (() => {
                     <button class="btn btn-outline" onclick="window.SmartSubs.LiveMode.toggleStats(false)">Volver</button>
                     ${liveState.status === 'finished' ? `<button class="btn btn-success" onclick="window.SmartSubs.LiveMode.exportToCSV()">Exportar</button>` : ''}
                 </div>
-            </div>`;
+            </div>
+        `;
+    }
+
+    function sortStats(key) {
+        if (liveState.sortKey === key) {
+            liveState.sortOrder = liveState.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            liveState.sortKey = key;
+            liveState.sortOrder = (key === 'name' || key === 'positionTag' || key === 'number') ? 'asc' : 'desc';
+        }
+        render(); 
     }
 
     function toggleStats(force) {
@@ -589,44 +657,26 @@ window.SmartSubs.LiveMode = (() => {
         const p = liveState.players.find(pl => pl.id === playerId);
         if (!p) return;
         const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
-        alert(`${p.name} (#${p.number})\nTotal: ${formatTime(p.totalPlayed)}\nEntradas: ${p.totalEntries}\nSalidas: ${p.totalExits}`);
+        alert(`${p.name} (#${p.number})\nTotal: ${formatTime(p.totalPlayed)}`);
     }
 
     function handleDragStart(e, cardType) { 
-        if (cardType) {
-            e.dataTransfer.setData('text/card', cardType);
-        } else {
-            e.dataTransfer.setData('text/plain', e.currentTarget.dataset.id); 
-        }
+        if (cardType) { e.dataTransfer.setData('text/card', cardType); } 
+        else { e.dataTransfer.setData('text/plain', e.currentTarget.dataset.id); } 
     }
     function handleDragOver(e) { e.preventDefault(); }
     function handleDrop(e) {
         e.preventDefault();
         const playerId = e.dataTransfer.getData('text/plain');
         const cardType = e.dataTransfer.getData('text/card');
-        
         const targetPlayerEl = e.target.closest('[data-id]');
         const targetPenaltyEl = e.target.closest('[data-penalty-id]');
-
-        // 1. Dropping a card onto a player
-        if (cardType && targetPlayerEl) {
-            penalizePlayer(targetPlayerEl.dataset.id, cardType);
-            return;
-        }
-
-        // 2. Dropping a player onto a card placeholder (re-entry)
-        if (playerId && targetPenaltyEl) {
-            reentryPlayer(targetPenaltyEl.dataset.penaltyId, playerId);
-            return;
-        }
-
-        // 3. Normal swap
+        if (cardType && targetPlayerEl) { penalizePlayer(targetPlayerEl.dataset.id, cardType); return; }
+        if (playerId && targetPenaltyEl) { reentryPlayer(targetPenaltyEl.dataset.penaltyId, playerId); return; }
         if (playerId && targetPlayerEl && playerId !== targetPlayerEl.dataset.id) {
             const p1 = liveState.players.find(p => p.id === playerId);
             const p2 = liveState.players.find(p => p.id === targetPlayerEl.dataset.id);
-            if (p1 && p2 && p1.isOnField !== p2.isOnField) {
-                swapPlayers(p1.isOnField ? p1.id : p2.id, p1.isOnField ? p2.id : p1.id);
-            }
+            if (p1 && p2 && p1.isOnField !== p2.isOnField) { swapPlayers(p1.isOnField ? p1.id : p2.id, p1.isOnField ? p2.id : p1.id); }
         }
     }
     function handleDragEnd(e) {}
@@ -652,8 +702,8 @@ window.SmartSubs.LiveMode = (() => {
     function exportToCSV() {
         const sorted = [...liveState.players].sort((a,b) => b.totalPlayed - a.totalPlayed);
         const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
-        let csv = `Numero,Jugadora,Posicion,Entradas,Salidas,Tiempo Total\n`;
-        sorted.forEach(p => { csv += `${p.number},"${p.name}",${p.positionTag},${p.totalEntries},${p.totalExits},"${formatTime(p.totalPlayed)}"\n`; });
+        let csv = `Numero,Jugadora,Posicion,Tiempo Total\n`;
+        sorted.forEach(p => { csv += `${p.number},"${p.name}",${p.positionTag},"${formatTime(p.totalPlayed)}"\n`; });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -663,7 +713,7 @@ window.SmartSubs.LiveMode = (() => {
 
     return {
         init, render, renderBody, toggleTimer, handleDragStart, handleDrop, handleDragOver, handleDragEnd, 
-        finishQuarter, exitSession, syncPlan, executeSwap, exportToCSV, showPlayerInfo, toggleStats,
+        finishQuarter, exitSession, syncPlan, executeSwap, exportToCSV, showPlayerInfo, toggleStats, sortStats,
         getState: () => liveState,
         exit: exitSession
     };
