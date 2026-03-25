@@ -308,13 +308,22 @@ class UI {
                 <td style="width:150px;">
                     <input type="text" class="form-control p-inline p-name" value="${player.name}" style="width:100%; padding:2px;">
                 </td>
-                <td style="width:80px;">
-                    <select class="form-control p-inline p-pos" style="width:100%; padding:2px; font-size:13px;">
-                        <option value="GK" ${player.positionTag === 'GK' ? 'selected' : ''}>GK</option>
-                        <option value="DEF" ${player.positionTag === 'DEF' ? 'selected' : ''}>DEF</option>
-                        <option value="MID" ${player.positionTag === 'MID' ? 'selected' : ''}>MID</option>
-                        <option value="FWD" ${player.positionTag === 'FWD' ? 'selected' : ''}>FWD</option>
-                    </select>
+                <td style="width:120px;">
+                    <div style="display:flex; gap:0.25rem;">
+                        <select class="form-control p-inline p-pos" style="flex:1; padding:2px; font-size:13px;">
+                            <option value="GK" ${player.positionTag === 'GK' ? 'selected' : ''}>GK</option>
+                            <option value="DEF" ${player.positionTag === 'DEF' ? 'selected' : ''}>DEF</option>
+                            <option value="MID" ${player.positionTag === 'MID' ? 'selected' : ''}>MID</option>
+                            <option value="FWD" ${player.positionTag === 'FWD' ? 'selected' : ''}>FWD</option>
+                        </select>
+                        <select class="form-control p-inline p-subgroup" style="width:40px; padding:2px; font-size:13px;" title="Subgrupo Rotativo">
+                            <option value="" ${!player.subgroup ? 'selected' : ''}>-</option>
+                            <option value="A" ${player.subgroup === 'A' ? 'selected' : ''}>A</option>
+                            <option value="B" ${player.subgroup === 'B' ? 'selected' : ''}>B</option>
+                            <option value="C" ${player.subgroup === 'C' ? 'selected' : ''}>C</option>
+                            <option value="D" ${player.subgroup === 'D' ? 'selected' : ''}>D</option>
+                        </select>
+                    </div>
                 </td>
                 <td style="width:220px;">
                     <div style="display:flex; align-items:center; gap:0.5rem; width:100%;" title="Prioridad de Minutos (0 a 10)">
@@ -508,15 +517,7 @@ class UI {
 
         let totalTargetMinutes = 0;
         let startersCount = 0;
-        const lineStats = {};
-
-        positions.forEach(pos => {
-            lineStats[pos.id] = {
-                name: pos.name,
-                available: (config.formationRequirements[pos.id] || 0) * totalMatchMinutes,
-                requested: 0
-            };
-        });
+        const subgroupStats = {};
 
         match.players.forEach(p => {
             if (p.isActive !== false) {
@@ -526,9 +527,19 @@ class UI {
                 const tv = fraction * totalMatchMinutes;
                 totalTargetMinutes += tv;
 
-                if (lineStats[p.positionTag]) {
-                    lineStats[p.positionTag].requested += tv;
+                const posName = positions.find(po => po.id === p.positionTag)?.name || p.positionTag;
+                const sg = p.subgroup ? ` ${p.subgroup}` : '';
+                const key = `${p.positionTag}-${p.subgroup || 'none'}`;
+                const displayName = `${posName}${sg}`;
+
+                if (!subgroupStats[key]) {
+                    subgroupStats[key] = { name: displayName, available: 0, requested: 0 };
                 }
+
+                if (p.isStarter) {
+                    subgroupStats[key].available += totalMatchMinutes;
+                }
+                subgroupStats[key].requested += tv;
             }
         });
 
@@ -539,10 +550,19 @@ class UI {
         let hasBlockingConflict = false;
         let conflictsHtml = '<div style="font-size: 0.95rem; line-height: 1.5;">';
 
-        // 1. Breakdown by line (Highest priority for the user)
+        // 1. Breakdown by subgroup (Highest priority for the user)
         conflictsHtml += `<div class="mb-4">`;
-        positions.forEach(pos => {
-            const stats = lineStats[pos.id];
+        
+        const posOrder = { 'GK': 1, 'DEF': 2, 'MID': 3, 'FWD': 4 };
+        const sortedKeys = Object.keys(subgroupStats).sort((a,b) => {
+            const posA = a.split('-')[0];
+            const posB = b.split('-')[0];
+            if (posOrder[posA] !== posOrder[posB]) return posOrder[posA] - posOrder[posB];
+            return a.localeCompare(b);
+        });
+
+        sortedKeys.forEach(key => {
+            const stats = subgroupStats[key];
             const lineDiff = Math.round(stats.requested - stats.available);
             let lineResult = '';
             if (Math.abs(lineDiff) <= 1) {
@@ -1069,6 +1089,7 @@ class UI {
                     const name = row.querySelector('.p-name').value;
                     const number = row.querySelector('.p-num').value;
                     const pos = row.querySelector('.p-pos').value;
+                    const subg = row.querySelector('.p-subgroup').value;
                     const target = parseInt(row.querySelector('.p-target').value, 10);
 
                     const pcAttCount = Array.from(row.querySelectorAll('.p-pca:checked')).map(cb => cb.value);
@@ -1079,7 +1100,7 @@ class UI {
                     const pIdx = match.players.findIndex(p => p.id === id);
                     if (pIdx > -1) {
                         const p = match.players[pIdx];
-                        if (p.name !== name || p.number !== number || p.positionTag !== pos || (p.playTarget ?? 50) !== target ||
+                        if (p.name !== name || p.number !== number || p.positionTag !== pos || (p.subgroup || '') !== subg || (p.playTarget ?? 50) !== target ||
                             JSON.stringify(p.pcAttackRoles) !== JSON.stringify(pcAttCount) ||
                             JSON.stringify(p.pcDefenseRoles) !== JSON.stringify(pcDefCount) ||
                             p.isActive !== isActive || p.isStarter !== isStarter
@@ -1087,6 +1108,7 @@ class UI {
                             p.name = name;
                             p.number = number;
                             p.positionTag = pos;
+                            p.subgroup = subg;
                             p.playTarget = target;
                             p.pcAttackRoles = pcAttCount;
                             p.pcDefenseRoles = pcDefCount;
@@ -1238,6 +1260,7 @@ class UI {
                         p.name = row.querySelector('.p-name').value;
                         p.number = row.querySelector('.p-num').value;
                         p.positionTag = row.querySelector('.p-pos').value;
+                        p.subgroup = row.querySelector('.p-subgroup').value;
                         p.playTarget = parseInt(row.querySelector('.p-target').value, 10);
                         p.pcAttackRoles = Array.from(row.querySelectorAll('.p-pca:checked')).map(cb => cb.value);
                         p.pcDefenseRoles = Array.from(row.querySelectorAll('.p-pcd:checked')).map(cb => cb.value);

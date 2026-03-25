@@ -80,6 +80,7 @@ class Store {
                 name: `${namePrefix} ${startIndex}`,
                 number: startIndex.toString(),
                 positionTag: pos,
+                subgroup: '',
                 playTarget: target,
                 isActive: true,
                 isStarter: isFirstGK,
@@ -179,6 +180,7 @@ class Store {
                 name: `Jugador ${startIndex + i}`,
                 number: (startIndex + i).toString(),
                 positionTag: pos,
+                subgroup: '',
                 playTarget: initialTarget,
                 isActive: true, // "Juega"
                 isStarter: isFirstGK, // "Titular"

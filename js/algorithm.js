@@ -31,6 +31,7 @@ class Planner {
                 id: p.id,
                 name: p.name,
                 positionTag: p.positionTag,
+                subgroup: p.subgroup || '',
                 playTarget: p.playTarget,
                 targetTotalMinutes: targetTotalMinutes,
                 pcAttackRoles: p.pcAttackRoles || [],
@@ -110,9 +111,9 @@ class Planner {
                         cannotPlay = false; // Cannot be benched if you're the only one for the role
                     }
 
-                    // Min rest/stint (2 min)
+                    // Min rest (2 min) / Min stint (3 min)
                     if (!isUniqueHolder && t.status === 'bench' && t.currentRest > 0 && t.currentRest < 2) cannotPlay = true;
-                    if (!isUniqueHolder && t.status === 'field' && t.currentStint > 0 && t.currentStint < 2) mustPlay = true;
+                    if (!isUniqueHolder && t.status === 'field' && t.currentStint > 0 && t.currentStint < 3) mustPlay = true;
 
                     // Max stint (7 min) - Except slider 100% or unique holder
                     if (!isUniqueHolder && t.status === 'field' && t.currentStint >= 7 && t.playTarget < 10) cannotPlay = true;
@@ -139,6 +140,14 @@ class Planner {
                 const posOthers = posCandidates.filter(c => !c.mustPlay && !c.cannotPlay).sort((a, b) => b.score - a.score);
                 const posCannotPlayButAvailable = posCandidates.filter(c => c.cannotPlay && c.playTarget > 0).sort((a, b) => b.score - a.score);
 
+                // Calculate Subgroup Requirements based on Starters of this Position
+                const posStarters = match.players.filter(p => p.positionTag === pos && p.isStarter);
+                const subReqs = {};
+                posStarters.forEach(s => {
+                    const sg = s.subgroup || '';
+                    subReqs[sg] = (subReqs[sg] || 0) + 1;
+                });
+
                 // 3a. Conflict Check: Mandatory players exceed available slots
                 if (posMustPlay.length > reqCount) {
                     alert(`Conflicto táctico en bloque ${b + 1}: Hay ${posMustPlay.length} jugadoras con slider 100% para la posición ${pos}, pero solo hay ${reqCount} lugares en la formación.`);
@@ -155,19 +164,45 @@ class Planner {
                 // 3c. Fill Mandatory first
                 posMustPlay.forEach(c => selectedIds.add(c.id));
 
-                // 3d. Fill with 'others' (not cannotPlay)
-                let currentPosCount = Array.from(selectedIds).filter(id => tracking[id].positionTag === pos).length;
-                let needed = reqCount - currentPosCount;
-                for (let i = 0; i < Math.min(needed, posOthers.length); i++) {
-                    selectedIds.add(posOthers[i].id);
+                // 3d. Fill with 'others' prioritizing Subgroup Limits
+                for (const [sg, sgReq] of Object.entries(subReqs)) {
+                    const currentSgCount = Array.from(selectedIds).filter(id => tracking[id].positionTag === pos && (tracking[id].subgroup||'') === sg).length;
+                    const sgNeeded = sgReq - currentSgCount;
+                    if (sgNeeded > 0) {
+                        const sgOthers = posOthers.filter(c => (c.subgroup||'') === sg && !selectedIds.has(c.id));
+                        for (let i = 0; i < Math.min(sgNeeded, sgOthers.length); i++) {
+                            selectedIds.add(sgOthers[i].id);
+                        }
+                    }
                 }
 
-                // 3e. Fill with 'cannotPlay' if still needed (soft rules relaxed for formation)
+                let currentPosCount = Array.from(selectedIds).filter(id => tracking[id].positionTag === pos).length;
+                let needed = reqCount - currentPosCount;
+                if (needed > 0) {
+                    const remainingOthers = posOthers.filter(c => !selectedIds.has(c.id));
+                    for (let i = 0; i < Math.min(needed, remainingOthers.length); i++) {
+                        selectedIds.add(remainingOthers[i].id);
+                    }
+                }
+
+                // 3e. Fill with 'cannotPlay' prioritizing Subgroup Limits
+                for (const [sg, sgReq] of Object.entries(subReqs)) {
+                    const currentSgCount = Array.from(selectedIds).filter(id => tracking[id].positionTag === pos && (tracking[id].subgroup||'') === sg).length;
+                    const sgNeeded = sgReq - currentSgCount;
+                    if (sgNeeded > 0) {
+                        const sgCannotPlay = posCannotPlayButAvailable.filter(c => (c.subgroup||'') === sg && !selectedIds.has(c.id));
+                        for (let i = 0; i < Math.min(sgNeeded, sgCannotPlay.length); i++) {
+                            selectedIds.add(sgCannotPlay[i].id);
+                        }
+                    }
+                }
+
                 currentPosCount = Array.from(selectedIds).filter(id => tracking[id].positionTag === pos).length;
                 needed = reqCount - currentPosCount;
                 if (needed > 0) {
-                    for (let i = 0; i < Math.min(needed, posCannotPlayButAvailable.length); i++) {
-                        selectedIds.add(posCannotPlayButAvailable[i].id);
+                    const remainingCannot = posCannotPlayButAvailable.filter(c => !selectedIds.has(c.id));
+                    for (let i = 0; i < Math.min(needed, remainingCannot.length); i++) {
+                        selectedIds.add(remainingCannot[i].id);
                     }
                 }
 
