@@ -26,6 +26,9 @@ window.SmartSubs.LiveMode = (() => {
     let lastSuggestionCount = 0;
     let draggedId = null;
     let selectedId = null;
+    
+    let pendingConfirm = false;
+    let pendingConfirmTimeout = null;
 
     /**
      * Initialize Live Mode with current match data
@@ -140,8 +143,8 @@ window.SmartSubs.LiveMode = (() => {
                         }
                         p.playedPerQuarter[liveState.currentQuarter - 1] = (p.playedPerQuarter[liveState.currentQuarter - 1] || 0) + 1;
                     }
-                    p.currentStint++;
                 }
+                p.currentStint++;
             });
 
             // Update field penalties
@@ -165,21 +168,33 @@ window.SmartSubs.LiveMode = (() => {
     function finishQuarter() {
         const totalQuarters = (liveState.config && liveState.config.periodsCount) ? liveState.config.periodsCount : 4;
         const isLastQuarter = liveState.currentQuarter >= totalQuarters;
-        const label = isLastQuarter ? 'PARTIDO' : `cuarto ${liveState.currentQuarter}`;
 
-        if (confirm(`¿Finalizar ${label}?`)) {
-            pauseTimer();
-            if (isLastQuarter) {
-                liveState.status = 'finished';
-                saveSession();
+        if (!pendingConfirm) {
+            pendingConfirm = true;
+            render();
+            if (pendingConfirmTimeout) clearTimeout(pendingConfirmTimeout);
+            pendingConfirmTimeout = setTimeout(() => {
+                pendingConfirm = false;
                 render();
-            } else {
-                liveState.currentTime = 0;
-                liveState.currentQuarter++;
-                liveState.players.forEach(p => p.currentStint = 0);
-                saveSession();
-                render();
-            }
+            }, 3000);
+            return;
+        }
+
+        // Acción confirmada con el segundo clic
+        pendingConfirm = false;
+        if (pendingConfirmTimeout) clearTimeout(pendingConfirmTimeout);
+
+        pauseTimer();
+        if (isLastQuarter) {
+            liveState.status = 'finished';
+            saveSession();
+            render();
+        } else {
+            liveState.currentTime = 0;
+            liveState.currentQuarter++;
+            liveState.players.forEach(p => { p.currentStint = 0; });
+            saveSession();
+            render();
         }
     }
 
@@ -511,12 +526,15 @@ window.SmartSubs.LiveMode = (() => {
     function renderSuggestions() {
         if (!originSnapshot || !originSnapshot.plan) return '<p class="text-muted">Sin plan.</p>';
         
-        const quarterDuration = (liveState.config && liveState.config.quarterDuration) ? liveState.config.quarterDuration : 10;
-        const totalElapsed = ((liveState.currentQuarter - 1) * quarterDuration * 60) + liveState.currentTime;
-        const currentMinute = Math.floor(totalElapsed / 60);
+        const quarterDuration = (liveState.config && liveState.config.minsPerPeriod) ? liveState.config.minsPerPeriod : 15;
+        const totalElapsedSecs = ((liveState.currentQuarter - 1) * quarterDuration * 60) + liveState.currentTime;
+        
+        // 30 seconds lookahead
+        const lookaheadSecs = totalElapsedSecs + 30;
+        const evaluationMinute = Math.floor(lookaheadSecs / 60);
         
         const currentBlock = originSnapshot.plan.blocks.find(b => 
-            currentMinute >= b.startMinute && currentMinute < b.endMinute
+            evaluationMinute >= b.startMinute && evaluationMinute < b.endMinute
         );
         
         if (!currentBlock) return '<p class="text-muted">Fin del plan.</p>';
@@ -529,6 +547,37 @@ window.SmartSubs.LiveMode = (() => {
         const inPlayers = inIds.map(id => liveState.players.find(p => p.id === id)).filter(Boolean);
         const outPlayers = outIds.map(id => liveState.players.find(p => p.id === id)).filter(Boolean);
         let html = '<div style="display:flex; flex-direction:column; gap:0.5rem; max-height: 200px; overflow-y:auto; padding-right:5px;">';
+
+        // 1. Cierre de Cuarto (-30s)
+        const secsLeftInQuarter = (quarterDuration * 60) - liveState.currentTime;
+        if (secsLeftInQuarter <= 30 && secsLeftInQuarter > 0) {
+            html += `<div class="suggestion-item alert-warning" style="background:rgba(245, 158, 11, 0.1); border:1px solid var(--accent-warning); padding:0.6rem; border-radius:var(--radius-md);">
+                <div style="color:var(--accent-warning); font-weight:bold; font-size:0.85rem;"><i class="fa-solid fa-stopwatch"></i> Cierre de Cuarto</div>
+                <div style="font-size:0.75rem; opacity:0.9;">Faltan ${secsLeftInQuarter}s para terminar el cuarto.</div>
+            </div>`;
+        }
+
+        // 2. Regreso de Tarjetas
+        if (liveState.fieldPenalties && liveState.fieldPenalties.length > 0) {
+            liveState.fieldPenalties.forEach(pen => {
+                const targetTime = pen.type === 'green' ? 120 : (pen.type === 'yellow' ? 300 : 9999);
+                const secsRemaining = targetTime - pen.elapsedTime;
+                if (secsRemaining <= 30 && secsRemaining > -60) {
+                    const originalPlayer = liveState.players.find(p => p.id === pen.originalPlayerId);
+                    if (originalPlayer && !originalPlayer.isOnField) {
+                        html += `
+                        <div class="suggestion-item" style="background:rgba(16, 185, 129, 0.1); border:1px solid ${pen.type === 'green' ? 'var(--accent-success)' : 'var(--accent-warning)'}; padding:0.6rem; border-radius:var(--radius-md);">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span class="text-info" style="font-weight:bold; font-size:0.85rem;"><i class="fa-solid fa-arrow-turn-up"></i> Regresa ${originalPlayer.name}</span>
+                                <span class="badge badge-${pen.type === 'green' ? 'success' : 'warning'} text-xs" style="color:black;">En ${Math.max(0, secsRemaining)}s</span>
+                            </div>
+                            <div style="font-size:0.7rem; opacity:0.8; margin-top:2px;">Su suspensión termina pronto.</div>
+                        </div>`;
+                    }
+                }
+            });
+        }
+
         inPlayers.forEach(pIn => {
             const matchIdx = outPlayers.findIndex(pOut => pOut.positionTag === pIn.positionTag);
             if (matchIdx !== -1) {
@@ -538,7 +587,7 @@ window.SmartSubs.LiveMode = (() => {
                          style="background:rgba(255,255,255,0.05); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:0.6rem; cursor:pointer; transition:all 0.2s; display:flex; flex-direction:column; gap:2px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="text-success" style="font-weight:bold; font-size:0.85rem;"><i class="fa-solid fa-arrow-right-to-bracket"></i> ${pIn.name}</span>
-                            <span class="text-xs text-muted">#${pIn.number}</span>
+                            <span class="badge badge-warning text-xs" style="padding:2px 6px; font-size:9px; color:black;">MIN ${currentBlock.startMinute}</span>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="text-danger" style="font-size:0.75rem; opacity:0.8;"><i class="fa-solid fa-arrow-right-from-bracket"></i> ${pOut.name}</span>
@@ -597,42 +646,86 @@ window.SmartSubs.LiveMode = (() => {
             qHeaders += `<th onclick="window.SmartSubs.LiveMode.sortStats('${key}')" style="text-align:center; cursor:pointer; user-select:none; padding:8px;">Q${i}${getSortIcon(key)}</th>`;
         }
 
+        const formatSecs = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
+
+        let eventsHtml = '';
+        if (liveState.history && liveState.history.length > 0) {
+            eventsHtml = liveState.history.map(ev => {
+                let text = '';
+                const pIn = ev.in ? liveState.players.find(p => p.id === ev.in) : null;
+                const pOut = ev.out ? liveState.players.find(p => p.id === ev.out) : null;
+                const qDuration = (liveState.config && liveState.config.minsPerPeriod) ? liveState.config.minsPerPeriod : 15;
+                const matchMins = Math.floor(ev.time / 60);
+                const q = Math.floor(matchMins / qDuration) + 1;
+                
+                if (ev.type && ev.type.startsWith('card-')) {
+                    const color = ev.type === 'card-green' ? 'success' : 'warning';
+                    text = `<span class="text-${color}"><i class="fa-solid fa-square"></i> Tarjeta a ${pOut ? pOut.name : 'Jugadora'}</span>`;
+                } else if (ev.type === 'reentry') {
+                    text = `<span class="text-info"><i class="fa-solid fa-arrow-turn-up"></i> Vuelve a cancha: ${pIn ? pIn.name : 'Jugadora'}</span>`;
+                } else {
+                    text = `<span class="text-danger">⬇️ ${pOut ? pOut.name : ''}</span> | <span class="text-success">⬆️ ${pIn ? pIn.name : ''}</span>`;
+                }
+                
+                return `<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:12px;">
+                           <div style="opacity:0.6; font-size:10px; margin-bottom:2px;">Q${q} - ${formatSecs(ev.time)}</div>
+                           <div>${text}</div>
+                        </div>`;
+            }).join('');
+        } else {
+            eventsHtml = '<p class="text-muted text-sm" style="padding:1rem;">No se registraron cambios.</p>';
+        }
+
         return `
-            <div class="stats-view" style="padding:1rem; max-width:800px; margin:0 auto; background:var(--bg-card); border-radius:12px;">
-                <div style="overflow-x:auto;">
-                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
-                        <thead>
-                            <tr style="border-bottom:2px solid var(--border-color); text-align:left;">
-                                <th onclick="window.SmartSubs.LiveMode.sortStats('number')" style="padding:8px; cursor:pointer; user-select:none;">#${getSortIcon('number')}</th>
-                                <th onclick="window.SmartSubs.LiveMode.sortStats('name')" style="padding:8px; cursor:pointer; user-select:none;">Nombre${getSortIcon('name')}</th>
-                                <th onclick="window.SmartSubs.LiveMode.sortStats('positionTag')" style="padding:8px; cursor:pointer; user-select:none;">Pos${getSortIcon('positionTag')}</th>
-                                ${qHeaders}
-                                <th onclick="window.SmartSubs.LiveMode.sortStats('totalPlayed')" style="padding:8px; text-align:right; cursor:pointer; user-select:none;">Total${getSortIcon('totalPlayed')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${sorted.map(p => {
-                                let qCells = '';
-                                for (let i = 0; i < numQuarters; i++) {
-                                    const qTime = (p.playedPerQuarter && p.playedPerQuarter[i]) ? p.playedPerQuarter[i] : 0;
-                                    qCells += `<td style="padding:8px; text-align:center; color:rgba(255,255,255,0.7); font-family:monospace;">${formatTime(qTime)}</td>`;
-                                }
-                                return `
-                                    <tr style="border-bottom:1px solid var(--border-color);">
-                                        <td style="padding:8px;">${p.number}</td>
-                                        <td style="padding:8px; font-weight:bold;">${p.name}</td>
-                                        <td style="padding:8px;"><span class="badge badge-gray" style="font-size:10px;">${p.positionTag}</span></td>
-                                        ${qCells}
-                                        <td style="padding:8px; text-align:right; font-weight:bold; font-family:monospace;">${formatTime(p.totalPlayed)}</td>
-                                    </tr>`;
-                            }).join('')}
-                        </tbody>
-                    </table>
+            <div class="stats-view" style="padding:1rem; max-width:1050px; margin:0 auto; background:var(--bg-card); border-radius:12px;">
+                
+                <div style="display:flex; flex-wrap:wrap; gap:20px;">
+                    <!-- Tabla de Minutajes -->
+                    <div style="flex:2; min-width:350px;">
+                        <h4 style="margin-bottom:12px; font-size:14px;"><i class="fa-solid fa-chart-bar"></i> Minutos Agrupados</h4>
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                                <thead>
+                                    <tr style="border-bottom:2px solid var(--border-color); text-align:left;">
+                                        <th onclick="window.SmartSubs.LiveMode.sortStats('number')" style="padding:8px; cursor:pointer; user-select:none;">#${getSortIcon('number')}</th>
+                                        <th onclick="window.SmartSubs.LiveMode.sortStats('name')" style="padding:8px; cursor:pointer; user-select:none;">Nombre${getSortIcon('name')}</th>
+                                        <th onclick="window.SmartSubs.LiveMode.sortStats('positionTag')" style="padding:8px; cursor:pointer; user-select:none;">Pos${getSortIcon('positionTag')}</th>
+                                        ${qHeaders}
+                                        <th onclick="window.SmartSubs.LiveMode.sortStats('totalPlayed')" style="padding:8px; text-align:right; cursor:pointer; user-select:none;">Total${getSortIcon('totalPlayed')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${sorted.map(p => {
+                                        let qCells = '';
+                                        for (let i = 0; i < numQuarters; i++) {
+                                            const qTime = (p.playedPerQuarter && p.playedPerQuarter[i]) ? p.playedPerQuarter[i] : 0;
+                                            qCells += `<td style="padding:8px; text-align:center; color:rgba(255,255,255,0.7); font-family:monospace;">${formatTime(qTime)}</td>`;
+                                        }
+                                        return `
+                                            <tr style="border-bottom:1px solid var(--border-color);">
+                                                <td style="padding:8px;">${p.number}</td>
+                                                <td style="padding:8px; font-weight:bold;">${p.name}</td>
+                                                <td style="padding:8px;"><span class="badge badge-gray" style="font-size:10px;">${p.positionTag}</span></td>
+                                                ${qCells}
+                                                <td style="padding:8px; text-align:right; font-weight:bold; font-family:monospace;">${formatTime(p.totalPlayed)}</td>
+                                            </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Bitacora Cronologica -->
+                    <div style="flex:1; min-width:280px; max-height:500px; overflow-y:auto; background:rgba(0,0,0,0.15); border-radius:8px; padding:12px;">
+                        <h4 style="margin-bottom:12px; font-size:14px;"><i class="fa-solid fa-list-ol"></i> Bitácora de Eventos</h4>
+                        ${eventsHtml}
+                    </div>
                 </div>
-                <div style="margin-top:1rem; display:flex; justify-content:center; gap:1rem; align-items:center;">
+
+                <div style="margin-top:1.5rem; display:flex; justify-content:center; gap:1rem; align-items:center;">
                     <button class="btn btn-outline" onclick="window.SmartSubs.LiveMode.toggleStats(false)">Volver</button>
-                    <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.exportToCSV()" title="Descargar CSV"><i class="fa-solid fa-download"></i> CSV</button>
-                    ${liveState.status === 'finished' ? `<button class="btn btn-success" onclick="window.SmartSubs.LiveMode.exportToCSV()">Exportar</button>` : ''}
+                    <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.exportToCSV()" title="Descargar Totales CSV"><i class="fa-solid fa-download"></i> CSV Totales</button>
+                    ${liveState.status === 'finished' ? `<button class="btn btn-success" onclick="window.SmartSubs.LiveMode.exportTimelineCSV()"><i class="fa-solid fa-timeline"></i> Exportar Línea de Tiempo</button>` : ''}
                 </div>
             </div>
         `;
@@ -733,10 +826,107 @@ window.SmartSubs.LiveMode = (() => {
         link.click();
     }
 
+    function exportTimelineCSV() {
+        if (!liveState || !liveState.players) return;
+
+        // Jugadoras iniciales (las que tenian isStarter=true al iniciar el Live Mode)
+        let currentFieldIds = new Set(liveState.players.filter(p => p.isStarter).map(p => p.id));
+        
+        const quarterDuration = (liveState.config && liveState.config.minsPerPeriod) ? liveState.config.minsPerPeriod : 15;
+        const totalQuarters = (liveState.config && liveState.config.periodsCount) ? liveState.config.periodsCount : 4;
+        const totalMinutes = quarterDuration * totalQuarters;
+
+        const events = [...(liveState.history || [])].sort((a, b) => a.time - b.time);
+        let eventIdx = 0;
+
+        let csv = "\uFEFFBloque;Inicio;Fin;";
+        
+        const sortedPlayers = [...liveState.players].sort((a,b) => {
+            const posOrder = { 'GK': 1, 'DEF': 2, 'MID': 3, 'FWD': 4 };
+            if (posOrder[a.positionTag] !== posOrder[b.positionTag]) return posOrder[a.positionTag] - posOrder[b.positionTag];
+            return (a.number || 0) - (b.number || 0);
+        });
+
+        sortedPlayers.forEach(p => { csv += `"${p.name} (${p.number})";`; });
+        csv += "Resumen en cancha;Eventos del Minuto\n";
+
+        for (let m = 0; m < totalMinutes; m++) {
+            if (m > 0 && m % quarterDuration === 0) {
+                const qNum = m / quarterDuration;
+                csv += `---;---;---;`;
+                sortedPlayers.forEach(p => { 
+                    const playedSecs = (p.playedPerQuarter && p.playedPerQuarter[qNum - 1]) ? p.playedPerQuarter[qNum - 1] : 0;
+                    const mins = Math.floor(playedSecs / 60);
+                    csv += `"${mins}m";`; 
+                });
+                csv += `---;--- FIN Q${qNum} / INICIO Q${qNum+1} ---\n`;
+            }
+            
+            const minuteStartSecs = m * 60;
+            let minuteEventsText = [];
+            
+            // Evaluamos todos los eventos ocurridos HACIA el inicio de este bloque
+            while (eventIdx < events.length && events[eventIdx].time <= minuteStartSecs) {
+                const ev = events[eventIdx];
+                if (ev.out && currentFieldIds.has(ev.out)) currentFieldIds.delete(ev.out);
+                if (ev.in) currentFieldIds.add(ev.in);
+                
+                // Track the event text
+                const pIn = ev.in ? liveState.players.find(p => p.id === ev.in) : null;
+                const pOut = ev.out ? liveState.players.find(p => p.id === ev.out) : null;
+                if (ev.type && ev.type.startsWith('card-')) {
+                    minuteEventsText.push(`Tarjeta: ${pOut ? pOut.name : '?'}`);
+                } else if (ev.type === 'reentry') {
+                    minuteEventsText.push(`Reingresa: ${pIn ? pIn.name : '?'}`);
+                } else if (pIn && pOut) {
+                    minuteEventsText.push(`Entra ${pIn.name} x Sale ${pOut.name}`);
+                }
+
+                eventIdx++;
+            }
+
+            csv += `${m + 1};${m};${m + 1};`;
+            sortedPlayers.forEach(p => {
+                csv += currentFieldIds.has(p.id) ? "X;" : ";";
+            });
+
+            const onFieldNames = Array.from(currentFieldIds).map(id => {
+                const p = liveState.players.find(x => x.id === id);
+                return p ? p.name : '';
+            }).filter(Boolean).join(', ');
+
+            csv += `"${onFieldNames}";"${minuteEventsText.join(' | ')}"\n`;
+        } // Fin del loop de minutos
+
+        // 1. Añadir el final del último cuarto (que queda afuera del loop)
+        csv += `---;---;---;`;
+        sortedPlayers.forEach(p => { 
+            const playedSecs = (p.playedPerQuarter && p.playedPerQuarter[totalQuarters - 1]) ? p.playedPerQuarter[totalQuarters - 1] : 0;
+            const mins = Math.floor(playedSecs / 60);
+            csv += `"${mins}m";`; 
+        });
+        csv += `---;--- FIN Q${totalQuarters} ---\n`;
+
+        // 2. Columna final con el total general de minutos de todo el partido
+        csv += `TOTAL;PARTIDO;TOTAL;`;
+        sortedPlayers.forEach(p => { 
+            const minsTotal = Math.floor((p.totalPlayed || 0) / 60);
+            csv += `"${minsTotal}m";`; 
+        });
+        csv += `---;--- TIEMPO TOTAL JUGADO ---\n`;
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `Realidad_${liveState.matchId}.csv`;
+        link.click();
+    }
+
     return {
         init, render, renderBody, toggleTimer, handleDragStart, handleDrop, handleDragOver, handleDragEnd, 
-        finishQuarter, exitSession, syncPlan, executeSwap, exportToCSV, handlePlayerClick, toggleStats, sortStats,
+        finishQuarter, exitSession, syncPlan, executeSwap, exportToCSV, exportTimelineCSV, handlePlayerClick, toggleStats, sortStats,
         getState: () => liveState,
+        isPendingConfirm: () => pendingConfirm,
         exit: exitSession
     };
 })();

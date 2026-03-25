@@ -757,6 +757,7 @@ class UI {
 
         const totalQuarters = (liveState.config && liveState.config.periodsCount) ? liveState.config.periodsCount : 4;
         const isLastQuarter = liveState.currentQuarter >= totalQuarters;
+        const isPendingStop = window.SmartSubs.LiveMode.isPendingConfirm && window.SmartSubs.LiveMode.isPendingConfirm();
 
         return `
             <div style="display:flex; align-items:center; gap:0.25rem;">
@@ -770,8 +771,8 @@ class UI {
                 <button class="btn ${liveState.status === 'playing' ? 'btn-warning' : 'btn-success'} btn-sm" onclick="window.SmartSubs.LiveMode.toggleTimer()" title="${liveState.status === 'playing' ? 'Pausar' : 'Empezar'}">
                     <i class="fa-solid fa-${liveState.status === 'playing' ? 'pause' : 'play'}"></i>
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="window.SmartSubs.LiveMode.finishQuarter()" title="${isLastQuarter ? 'Finalizar el partido y ver estadísticas' : 'Finalizar cuarto y reiniciar reloj'}">
-                    <i class="fa-solid fa-${isLastQuarter ? 'flag-checkered' : 'stop'}"></i>
+                <button class="btn ${isPendingStop ? 'btn-warning' : 'btn-danger'} btn-sm" onclick="window.SmartSubs.LiveMode.finishQuarter()" title="${isLastQuarter ? 'Finalizar el partido y ver estadísticas' : 'Finalizar cuarto y reiniciar reloj'}">
+                    ${isPendingStop ? '<span style="font-weight:bold; font-size:0.75rem;">Confirmar</span>' : `<i class="fa-solid fa-${isLastQuarter ? 'flag-checkered' : 'stop'}"></i>`}
                 </button>
                 <button class="btn btn-outline btn-sm" onclick="window.SmartSubs.LiveMode.syncPlan()" title="Actualizar plan de referencia (sin resetear cronómetros)">
                     <i class="fa-solid fa-sync"></i>
@@ -1270,9 +1271,9 @@ class UI {
                 });
                 window.SmartSubs.store.saveCurrentMatch();
 
-                // Save configuration directly from inputs
-                const periods = parseInt(document.getElementById('cfg-periods').value, 10) || 4;
-                const minPer = parseInt(document.getElementById('cfg-mins').value, 10) || 15;
+                // Use existing match configuration as inputs are only in Config screen
+                const periods = match.config.periodsCount || 4;
+                const minPer = match.config.minsPerPeriod || 15;
                 match.config.periodsCount = periods;
                 match.config.minsPerPeriod = minPer;
                 match.config.totalMinutes = periods * minPer;
